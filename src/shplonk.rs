@@ -44,10 +44,10 @@ pub fn open<F, C, T>(
     for xs in xss {
         opening_set.extend(xs);
     }
-    let z = crate::z_of_set(&opening_set);
+    let z = crate::utils::z_of_set(&opening_set);
 
     let zs: Vec<_> = xss.iter()
-        .map(|xs| crate::z_of_set(xs))
+        .map(|xs| crate::utils::z_of_set(xs))
         .collect();
 
     let (qs, rs): (Vec<_>, Vec<_>) = fs.iter().zip(&zs)
@@ -55,7 +55,7 @@ pub fn open<F, C, T>(
         .unzip();
 
     let gamma = transcript.get_gamma();
-    let q = crate::randomize(gamma, &qs);
+    let q = crate::utils::randomize(gamma, &qs);
     let q_comm = scheme.commit(&q);
     transcript.commit_to_q(&q_comm);
     let zeta = transcript.get_zeta();
@@ -65,7 +65,7 @@ pub fn open<F, C, T>(
     let rs_zeta: Vec<_> = rs.iter().map(|ri| ri.evaluate(&zeta)).collect();
     ark_ff::batch_inversion(&mut zs_zeta);
 
-    let gs = crate::powers(gamma, fs.len() - 1);
+    let gs = crate::utils::powers(gamma, fs.len() - 1);
 
     let mut l = DensePolynomial::zero();
     for (((fi, ri), zi_inv), gi) in fs.iter()
@@ -76,7 +76,7 @@ pub fn open<F, C, T>(
     }
     let l = &(&l - &q) * z_zeta;
 
-    let z_of_zeta = crate::z_of_point(&zeta);
+    let z_of_zeta = crate::utils::z_of_point(&zeta);
     let (q_of_l, r_of_l) = l.divide_with_q_and_r(&z_of_zeta);
     assert!(r_of_l.is_zero());
     let q_of_l1 = scheme.commit(&q_of_l);
@@ -124,7 +124,7 @@ pub fn verify<F, C, T>(
 
     ark_ff::batch_inversion(&mut zs_at_zeta);
 
-    let gs = crate::powers(gamma, f1s.len() - 1);
+    let gs = crate::utils::powers(gamma, f1s.len() - 1);
 
     let gzs: Vec<_> = gs.iter().zip(zs_at_zeta).map(|(&gi, zi_inv)| gi * zi_inv).collect();
 
@@ -147,9 +147,9 @@ pub fn verify<F, C, T>(
 
 fn interpolate<F: FftField>(xs: &[F], ys: &[F]) -> DensePolynomial<F> {
     let x1 = xs[0];
-    let mut l = crate::z_of_point(&x1);
+    let mut l = crate::utils::z_of_point(&x1);
     for &xj in xs.iter().skip(1) {
-        let q = crate::z_of_point(&xj);
+        let q = crate::utils::z_of_point(&xj);
         l = &l * &q;
     }
 
@@ -168,7 +168,7 @@ fn interpolate<F: FftField>(xs: &[F], ys: &[F]) -> DensePolynomial<F> {
 
     let mut res = DensePolynomial::zero();
     for ((&wi, &xi), &yi) in ws.iter().zip(xs).zip(ys) {
-        let d = crate::z_of_point(&xi);
+        let d = crate::utils::z_of_point(&xi);
         let mut z = &l / &d;
         z = &z * wi;
         z = &z * yi;
@@ -183,7 +183,7 @@ mod tests {
     use crate::tests::IdentityCommitment;
 
     use ark_std::{test_rng, UniformRand};
-    use ark_std::rand::{Rng, rngs::StdRng};
+    use ark_std::rand::Rng;
     use ark_std::iter::FromIterator;
 
     type F = ark_bw6_761::Fr;
