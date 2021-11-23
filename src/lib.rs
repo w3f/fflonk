@@ -1,7 +1,3 @@
-extern crate ark_ff;
-extern crate ark_poly;
-extern crate ark_std;
-
 use ark_ff::PrimeField;
 use ark_std::ops::{Add, Sub};
 
