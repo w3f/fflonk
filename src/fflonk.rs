@@ -35,7 +35,7 @@ impl<F: FftField, P: UVPolynomial<F>> Fflonk<F, P>
     // Given a `t`-th root `z` of `x` returns all the `t`-th roots of `x`
     // `z, zw, ..., zw^{t-1}`, where w is a primitive `t`-th root of unity.
     // TODO: fix the order
-    fn roots(t: usize, root_t_of_x: F) -> Vec<F> {
+    pub fn roots(t: usize, root_t_of_x: F) -> Vec<F> {
         let omega_t = F::get_root_of_unity(t).expect("root of unity not found");
         let mut acc = root_t_of_x;
         let mut res = vec![root_t_of_x];
