@@ -5,7 +5,7 @@ use ark_poly::univariate::{DensePolynomial, DenseOrSparsePolynomial};
 
 use std::collections::HashSet;
 
-use crate::{AdditiveCommitment, CommitmentScheme};
+use crate::pcs::{AdditiveCommitment, CommitmentScheme};
 
 
 pub trait ShplonkTranscript<F, G> {
@@ -189,7 +189,8 @@ fn interpolate<F: FftField>(xs: &[F], ys: &[F]) -> DensePolynomial<F> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::{IdentityCommitment, F};
+    use crate::tests::F;
+    use crate::pcs::tests::IdentityCommitment;
 
     use ark_std::{test_rng, UniformRand};
     use ark_std::iter::FromIterator;
