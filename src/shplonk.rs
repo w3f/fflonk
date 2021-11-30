@@ -189,10 +189,12 @@ fn interpolate<F: FftField>(xs: &[F], ys: &[F]) -> DensePolynomial<F> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::{IdentityCommitment, generate_test_data, F};
+    use crate::tests::{IdentityCommitment, F};
 
     use ark_std::{test_rng, UniformRand};
     use ark_std::iter::FromIterator;
+    use ark_std::rand::Rng;
+    use crate::Poly;
 
     impl<G> ShplonkTranscript<F, G> for (F, F) {
         fn get_gamma(&mut self) -> F { self.0 }
@@ -202,13 +204,57 @@ mod tests {
         fn get_zeta(&mut self) -> F { self.1 }
     }
 
+    pub fn generate_test_data<R, F, C>(
+        rng: &mut R,
+        d: usize, // degree of polynomials
+        t: usize, // number of polynomials
+        xss: &Vec<Vec<F>>, // vecs of opening points per polynomial
+        scheme: &C, // commitment scheme
+    ) -> (
+        Vec<Poly<F>>, // polynomials
+        Vec<C::G>, // commitments
+        Vec<Vec<F>>, // evaluations per polynomial
+    ) where
+        R: Rng,
+        F: PrimeField,
+        C: CommitmentScheme<F, Poly<F>>
+    {
+        // polynomials
+        let fs: Vec<Poly<F>> = (0..t)
+            .map(|_| Poly::rand(d, rng))
+            .collect();
+        // commitments
+        let fcs: Vec<_> = fs.iter()
+            .map(|fi| scheme.commit(fi))
+            .collect();
+
+        // evaluations per polynomial
+        let yss: Vec<_> = fs.iter()
+            .zip(xss.iter())
+            .map(|(f, xs)|
+                xs.iter().map(
+                    |x| f.evaluate(x))
+                    .collect::<Vec<_>>()
+            ).collect();
+
+        (fs, fcs, yss)
+    }
+
     #[test]
     fn test_shplonk() {
         let rng = &mut test_rng();
         let scheme = IdentityCommitment {};
 
-        let (fs, fcs, xss, yss) =
-            generate_test_data(rng, 15, 4, 3, &scheme);
+        let t = 4; // number of polynomials
+        let max_m = 3; // maximal number of opening points per polynomial
+
+        let xss: Vec<_> = (0..t)
+            .map(|_| (0..rng.gen_range(1..max_m))
+                .map(|_| F::rand(rng)).collect::<Vec<_>>())
+            .collect();
+
+        let (fs, fcs, yss) =
+            generate_test_data(rng, 15, 4, &xss, &scheme);
 
         let sets_of_xss: Vec<_> = xss.iter()
             .map(|xs| HashSet::from_iter(xs.iter().cloned()))

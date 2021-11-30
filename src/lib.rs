@@ -10,6 +10,7 @@ mod utils;
 
 pub trait AdditiveCommitment<F: PrimeField>:
 Sized
++ Clone
 + Add<Self, Output=Self>
 + Sub<Self, Output=Self>
 + core::iter::Sum<Self>
@@ -83,18 +84,52 @@ pub fn verify<F, C, T>(
     shplonk::verify(&gcs, proof, &xss, &yss, scheme, transcript)
 }
 
+pub fn open_single<F, C, T>(
+    fs: &[Poly<F>], // polynomials to combine
+    t: usize, // lengths of the combination
+    roots: &[F], // set of opening points presented as t-th roots
+    scheme: &C,
+    transcript: &mut T,
+) -> (C::G, C::G)
+    where
+        F: PrimeField,
+        C: CommitmentScheme<F, DensePolynomial<F>>,
+        T: ShplonkTranscript<F, C::G>,
+{
+    open(&[fs.to_vec()], &[t], &[roots.to_vec()], scheme, transcript)
+}
+
+pub fn verify_single<F, C, T>(
+    gc: &C::G,
+    t: usize,
+    proof: (C::G, C::G),
+    roots: &[F],
+    vss: &[Vec<F>], // evaluations per point // TODO: shplonk provides API with evals per polynomial
+    scheme: &C,
+    transcript: &mut T,
+) -> bool
+    where
+        F: PrimeField,
+        C: CommitmentScheme<F, DensePolynomial<F>>,
+        T: ShplonkTranscript<F, C::G>,
+{
+    verify(&[(*gc).clone()], &[t], proof, &[roots.to_vec()], &[vss.to_vec()], scheme, transcript)
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use ark_std::{test_rng, UniformRand};
     use ark_std::rand::Rng;
-    use std::marker::PhantomData;
+    use ark_std::marker::PhantomData;
 
     use ark_ff::Field;
     use ark_poly::{UVPolynomial, Polynomial};
 
     pub type F = ark_bw6_761::Fr;
 
+    #[derive(Clone)]
     pub struct WrappedPolynomial<F: Field, P: UVPolynomial<F>>(pub P, PhantomData<F>);
 
     impl<F: Field, P: UVPolynomial<F>> WrappedPolynomial<F, P> {
@@ -153,49 +188,91 @@ mod tests {
         }
     }
 
-    pub fn generate_test_data<R, F, C>(
+    fn generate_test_data<R, F>(
         rng: &mut R,
         d: usize, // degree of polynomials
         t: usize, // number of polynomials
-        max_m: usize, // maximal number of opening points per polynomial
-        scheme: &C, // commitment scheme
+        m: usize, // number of opening points
     ) -> (
         Vec<Poly<F>>, // polynomials
-        Vec<C::G>, // commitments
-        Vec<Vec<F>>, // opening points per polynomial
-        Vec<Vec<F>>, // evaluations per polynomial
+        Vec<F>, // roots of evaluation points
+        Vec<Vec<F>>, // evaluations per point
     ) where
         R: Rng,
         F: PrimeField,
-        C: CommitmentScheme<F, Poly<F>>
     {
-        let ms: Vec<usize> = (0..t) // number of opening points per polynomial
-            .map(|_| rng.gen_range(1..max_m))
-            .collect();
-
         // polynomials
         let fs: Vec<Poly<F>> = (0..t)
             .map(|_| Poly::rand(d, rng))
             .collect();
-        // commitments
-        let fcs: Vec<_> = fs.iter()
-            .map(|fi| scheme.commit(fi))
+
+        let roots: Vec<_> = (0..m)
+            .map(|_| F::rand(rng))
             .collect();
-        // opening points per polynomial
-        let xss: Vec<_> = ms.into_iter()
-            .map(|m|
-                (0..m).map(|_| F::rand(rng)
-                ).collect::<Vec<_>>())
+
+        let xs: Vec<F> = roots.iter() // opening points
+            .map(|root| root.pow([t as u64]))
             .collect();
-        // evaluations per polynomial
-        let yss: Vec<_> = fs.iter()
-            .zip(xss.iter())
-            .map(|(f, xs)|
-                xs.iter().map(
-                    |x| f.evaluate(x))
+
+        // evaluations per point
+        let vss: Vec<_> = xs.iter()
+            .map(|x|
+                fs.iter()
+                    .map(|f| f.evaluate(x))
                     .collect::<Vec<_>>()
             ).collect();
 
-        (fs, fcs, xss, yss)
+        (fs, roots, vss)
+    }
+
+    #[test]
+    fn test_fflonk_single() {
+        let rng = &mut test_rng();
+        let scheme = IdentityCommitment {};
+        let transcript = &mut (F::rand(rng), F::rand(rng));
+
+        let t = 4; // number of polynomials in a combination
+        let m = 3; // number of opening points per a combination
+        let d = 15;
+
+        let (fs, roots, vss) = generate_test_data(rng, d, t, m);
+
+        let g = Fflonk::combine(t, &fs);
+        let gc = scheme.commit(&g);
+
+        let proof = open_single(&fs, t, &roots, &scheme, transcript);
+        assert!(verify_single(&gc, t, proof, &roots, &vss, &scheme, transcript));
+    }
+
+    #[test]
+    fn test_fflonk() {
+        let rng = &mut test_rng();
+        let scheme = IdentityCommitment {};
+        let transcript = &mut (F::rand(rng), F::rand(rng));
+
+        let ds = [31, 15];
+        let ts = [2, 4]; // number of polynomials in a combination
+        let ms = [2, 2]; // number of opening points per a combination
+
+        let mut fss = vec![];
+        let mut rootss = vec![];
+        let mut vsss = vec![];
+        for ((d, t), m) in ds.into_iter()
+            .zip(ts)
+            .zip(ms)
+        {
+            let (fs, roots, vss) = generate_test_data(rng, d, t, m);
+            fss.push(fs);
+            rootss.push(roots);
+            vsss.push(vss);
+        }
+
+        let gcs: Vec<_> = fss.iter()
+            .zip(ts)
+            .map(|(fs, t)| scheme.commit(&Fflonk::combine(t, &fs)))
+            .collect();
+
+        let proof = open(&fss, &ts, &rootss, &scheme, transcript);
+        assert!(verify(&gcs, &ts, proof, &rootss, &vsss, &scheme, transcript));
     }
 }
