@@ -5,7 +5,12 @@ use ark_poly::univariate::{DensePolynomial, DenseOrSparsePolynomial};
 
 use std::collections::HashSet;
 
-use crate::pcs::{AdditiveCommitment, CommitmentScheme};
+use crate::EuclideanPolynomial;
+use crate::pcs::{PCS, CommitmentSpace, VerifierKey};
+
+
+use std::marker::PhantomData;
+use crate::Poly;
 
 
 pub trait ShplonkTranscript<F, G> {
@@ -15,176 +20,186 @@ pub trait ShplonkTranscript<F, G> {
 }
 
 
-trait EuclideanPolynomial: Sized {
-    fn divide_with_q_and_r(&self, divisor: &Self) -> (Self, Self);
+pub struct Shplonk<F: PrimeField, CS: PCS<F>> {
+    _field: PhantomData<F>,
+    _pcs: PhantomData<CS>,
 }
 
-impl<F: Field> EuclideanPolynomial for DensePolynomial<F> {
-    fn divide_with_q_and_r(&self, divisor: &Self) -> (Self, Self) {
-        let a: DenseOrSparsePolynomial<F> = self.into();
-        let b: DenseOrSparsePolynomial<F> = divisor.into();
-        a.divide_with_q_and_r(&b).unwrap()
+impl<F: PrimeField, CS: PCS<F>> PCS<F> for Shplonk<F, CS> {
+    type G = CS::G;
+    type CK = CS::CK;
+    type OK = CS::OK;
+    type VK = CS::VK;
+    type Proof = CS::Proof;
+
+    fn setup() -> (Self::CK, Self::OK, Self::VK) {
+        CS::setup()
+    }
+
+    fn commit(ck: &Self::CK, p: &Poly<F>) -> Self::G {
+        CS::commit(ck, p)
+    }
+
+    fn open(ok: &Self::OK, p: &Poly<F>, x: &F) -> Self::Proof {
+        CS::open(ok, p, x)
+    }
+
+    fn verify(vk: &Self::VK, c: &Self::G, x: &F, z: &F, proof: &Self::Proof) -> bool {
+        CS::verify(vk, c, x, z, proof)
     }
 }
 
+impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
+    pub fn open_many<T: ShplonkTranscript<F, CS::G>>(
+        ck: &<Shplonk<F, CS> as PCS<F>>::CK,
+        ok: &<Shplonk<F, CS> as PCS<F>>::OK,
+        fs: &[Poly<F>],
+        xss: &[HashSet<F>],
+        transcript: &mut T,
+    ) -> (CS::G, CS::Proof)
+    {
+        assert_eq!(xss.len(), fs.len(), "{} opening sets specified for {} polynomials", xss.len(), fs.len());
+        let mut opening_set = HashSet::new();
+        for xs in xss {
+            opening_set.extend(xs);
+        }
+        let z = crate::utils::z_of_set(&opening_set);
 
-pub fn open<F, C, T>(
-    fs: &[DensePolynomial<F>],
-    xss: &[HashSet<F>],
-    scheme: &C,
-    transcript: &mut T,
-) -> (C::G, C::G)
-    where
-        F: PrimeField, //TODO
-        C: CommitmentScheme<F, DensePolynomial<F>>,
-        T: ShplonkTranscript<F, C::G>,
-{
-    assert_eq!(xss.len(), fs.len(), "{} opening sets specified for {} polynomials", xss.len(), fs.len());
-    let mut opening_set = HashSet::new();
-    for xs in xss {
-        opening_set.extend(xs);
-    }
-    let z = crate::utils::z_of_set(&opening_set);
+        let zs: Vec<_> = xss.iter()
+            .map(|xs| crate::utils::z_of_set(xs))
+            .collect();
 
-    let zs: Vec<_> = xss.iter()
-        .map(|xs| crate::utils::z_of_set(xs))
-        .collect();
+        let (qs, rs): (Vec<_>, Vec<_>) = fs.iter().zip(&zs)
+            .map(|(fi, zi)| fi.divide_with_q_and_r(zi))
+            .unzip();
 
-    let (qs, rs): (Vec<_>, Vec<_>) = fs.iter().zip(&zs)
-        .map(|(fi, zi)| fi.divide_with_q_and_r(zi))
-        .unzip();
+        let gamma = transcript.get_gamma();
+        let q = crate::utils::randomize(gamma, &qs);
+        let q_comm = CS::commit(ck, &q);//scheme.commit(&q);
+        transcript.commit_to_q(&q_comm);
+        let zeta = transcript.get_zeta();
 
-    let gamma = transcript.get_gamma();
-    let q = crate::utils::randomize(gamma, &qs);
-    let q_comm = scheme.commit(&q);
-    transcript.commit_to_q(&q_comm);
-    let zeta = transcript.get_zeta();
+        let z_zeta = z.evaluate(&zeta);
+        let mut zs_zeta: Vec<_> = zs.iter().map(|zi| zi.evaluate(&zeta)).collect();
+        let rs_zeta: Vec<_> = rs.iter().map(|ri| ri.evaluate(&zeta)).collect();
+        ark_ff::batch_inversion(&mut zs_zeta);
 
-    let z_zeta = z.evaluate(&zeta);
-    let mut zs_zeta: Vec<_> = zs.iter().map(|zi| zi.evaluate(&zeta)).collect();
-    let rs_zeta: Vec<_> = rs.iter().map(|ri| ri.evaluate(&zeta)).collect();
-    ark_ff::batch_inversion(&mut zs_zeta);
+        let gs = crate::utils::powers(gamma, fs.len() - 1);
 
-    let gs = crate::utils::powers(gamma, fs.len() - 1);
+        let mut l = DensePolynomial::zero();
+        for (((fi, ri), zi_inv), gi) in fs.iter()
+            .zip(rs_zeta)
+            .zip(zs_zeta)
+            .zip(gs) {
+            l += (gi * zi_inv, &(fi - &DensePolynomial::from_coefficients_vec(vec![ri])));
+        }
+        let l = &(&l - &q) * z_zeta;
 
-    let mut l = DensePolynomial::zero();
-    for (((fi, ri), zi_inv), gi) in fs.iter()
-        .zip(rs_zeta)
-        .zip(zs_zeta)
-        .zip(gs) {
-        l += (gi * zi_inv, &(fi - &DensePolynomial::from_coefficients_vec(vec![ri])));
-    }
-    let l = &(&l - &q) * z_zeta;
-
-    let z_of_zeta = crate::utils::z_of_point(&zeta);
-    let (q_of_l, r_of_l) = l.divide_with_q_and_r(&z_of_zeta);
-    assert!(r_of_l.is_zero());
-    let q_of_l1 = scheme.commit(&q_of_l);
-    (q_comm, q_of_l1)
-}
-
-fn get_linearization_commitment<F, C, T>(
-    fcs: &[C::G],
-    qc: &C::G,
-    xss: &Vec<Vec<F>>,
-    yss: &Vec<Vec<F>>,
-    scheme: &C,
-    transcript: &mut T,
-) -> C::G
-    where
-        F: PrimeField,
-        C: CommitmentScheme<F, DensePolynomial<F>>,
-        T: ShplonkTranscript<F, C::G>,
-{
-    let gamma = transcript.get_gamma();
-    transcript.commit_to_q(&qc);
-    let zeta = transcript.get_zeta();
-
-    let mut opening_set = HashSet::new();
-    for xs in xss {
-        opening_set.extend(xs);
+        let z_of_zeta = crate::utils::z_of_point(&zeta);
+        // let (q_of_l, r_of_l) = l.divide_with_q_and_r(&z_of_zeta);
+        // assert!(r_of_l.is_zero());
+        // let q_of_l1 = CS::commit(ck, &q_of_l);//scheme.commit(&q_of_l);
+        let q_of_l1 = CS::open(ok, &l, &zeta);
+        (q_comm, q_of_l1)
     }
 
-    let z_at_zeta = opening_set.iter()
-        .map(|xi| zeta - xi)
-        .reduce(|z, zi| z * zi)
-        .unwrap();
+    fn get_linearization_commitment<T: ShplonkTranscript<F, CS::G>>(
+        fcs: &[<Shplonk<F, CS> as PCS<F>>::G],
+        qc: &<Shplonk<F, CS> as PCS<F>>::G,
+        onec: &<Shplonk<F, CS> as PCS<F>>::G,
+        xss: &Vec<Vec<F>>,
+        yss: &Vec<Vec<F>>,
+        transcript: &mut T,
+    ) -> <Shplonk<F, CS> as PCS<F>>::G
+    {
+        let gamma = transcript.get_gamma();
+        transcript.commit_to_q(&qc);
+        let zeta = transcript.get_zeta();
 
-    let rs = xss.iter().zip(yss).map(|(xs, ys)| interpolate(&xs, &ys));
-    let rs_at_zeta = rs.map(|ri| ri.evaluate(&zeta));
+        let mut opening_set = HashSet::new();
+        for xs in xss {
+            opening_set.extend(xs);
+        }
 
-    let mut zs_at_zeta: Vec<_> = xss.iter().map(|xs|
-        xs.iter()
+        let z_at_zeta = opening_set.iter()
             .map(|xi| zeta - xi)
             .reduce(|z, zi| z * zi)
-            .unwrap()
-    ).collect();
+            .unwrap();
 
-    ark_ff::batch_inversion(&mut zs_at_zeta);
+        let rs = xss.iter().zip(yss).map(|(xs, ys)| Self::interpolate(&xs, &ys));
+        let rs_at_zeta = rs.map(|ri| ri.evaluate(&zeta));
 
-    let gs = crate::utils::powers(gamma, fcs.len() - 1);
+        let mut zs_at_zeta: Vec<_> = xss.iter().map(|xs|
+            xs.iter()
+                .map(|xi| zeta - xi)
+                .reduce(|z, zi| z * zi)
+                .unwrap()
+        ).collect();
 
-    let gzs: Vec<_> = gs.iter().zip(zs_at_zeta).map(|(&gi, zi_inv)| gi * zi_inv).collect();
+        ark_ff::batch_inversion(&mut zs_at_zeta);
 
-    let fc: C::G = fcs.iter().zip(&gzs)
-        .map(|(f1, gzi)| f1.mul(z_at_zeta * gzi))
-        .sum();
+        let gs = crate::utils::powers(gamma, fcs.len() - 1);
 
-    let r = rs_at_zeta.zip(gzs).map(|(ri_at_zeta, gzi)| ri_at_zeta * &gzi).sum::<F>() * z_at_zeta;
+        let gzs: Vec<_> = gs.iter().zip(zs_at_zeta).map(|(&gi, zi_inv)| gi * zi_inv).collect();
 
-    fc - scheme.commit_const(&r) - qc.mul(z_at_zeta)
-}
+        let fc: <Shplonk<F, CS> as PCS<F>>::G = fcs.iter().zip(&gzs)
+            .map(|(f1, gzi)| f1.mul(z_at_zeta * gzi))
+            .sum();
 
-pub fn verify<F, C, T>(
-    fcs: &[C::G],
-    proof: (C::G, C::G),
-    xss: &Vec<Vec<F>>,
-    yss: &Vec<Vec<F>>,
-    scheme: &C,
-    transcript: &mut T,
-) -> bool
-    where
-        F: PrimeField,
-        C: CommitmentScheme<F, DensePolynomial<F>>,
-        T: ShplonkTranscript<F, C::G>,
-{
-    let qc = proof.0; // commitment to the original quotient
-    let lqc = proof.1; // commitment to the quotient of the linearization polynomial
-    let lc = get_linearization_commitment(fcs, &qc, xss, yss, scheme, transcript);
-    scheme.verify(&lc, &transcript.get_zeta(), F::zero(), &lqc)
-}
+        let r = rs_at_zeta.zip(gzs).map(|(ri_at_zeta, gzi)| ri_at_zeta * &gzi).sum::<F>() * z_at_zeta;
 
-fn interpolate<F: FftField>(xs: &[F], ys: &[F]) -> DensePolynomial<F> {
-    let x1 = xs[0];
-    let mut l = crate::utils::z_of_point(&x1);
-    for &xj in xs.iter().skip(1) {
-        let q = crate::utils::z_of_point(&xj);
-        l = &l * &q;
+        fc - onec.mul(r) - qc.mul(z_at_zeta)
     }
 
-    let mut ws = vec![];
-    for xj in xs {
-        let mut wj = F::one();
-        for xk in xs {
-            if xk != xj {
-                let d = *xj - xk;
-                wj *= d;
-            }
+    pub fn verify_many<T: ShplonkTranscript<F, CS::G>>(
+        vk: &<Shplonk<F, CS> as PCS<F>>::VK,
+        fcs: &[<Shplonk<F, CS> as PCS<F>>::G],
+        proof: &(CS::G, CS::Proof),
+        xss: &Vec<Vec<F>>,
+        yss: &Vec<Vec<F>>,
+        transcript: &mut T,
+    ) -> bool
+    {
+        let qc = &proof.0; // commitment to the original quotient
+        let lqc = &proof.1; // commitment to the quotient of the linearization polynomial
+        let onec = vk.commit_to_one();
+        let lc = Self::get_linearization_commitment(fcs, qc, &onec, xss, yss, transcript);
+        CS::verify(vk, &lc, &transcript.get_zeta(), &F::zero(), lqc)//verify(&lc, &transcript.get_zeta(), F::zero(), &lqc)
+    }
+
+    fn interpolate(xs: &[F], ys: &[F]) -> DensePolynomial<F> {
+        let x1 = xs[0];
+        let mut l = crate::utils::z_of_point(&x1);
+        for &xj in xs.iter().skip(1) {
+            let q = crate::utils::z_of_point(&xj);
+            l = &l * &q;
         }
-        ws.push(wj);
-    }
-    ark_ff::batch_inversion(&mut ws);
 
-    let mut res = DensePolynomial::zero();
-    for ((&wi, &xi), &yi) in ws.iter().zip(xs).zip(ys) {
-        let d = crate::utils::z_of_point(&xi);
-        let mut z = &l / &d;
-        z = &z * wi;
-        z = &z * yi;
-        res = res + z;
+        let mut ws = vec![];
+        for xj in xs {
+            let mut wj = F::one();
+            for xk in xs {
+                if xk != xj {
+                    let d = *xj - xk;
+                    wj *= d;
+                }
+            }
+            ws.push(wj);
+        }
+        ark_ff::batch_inversion(&mut ws);
+
+        let mut res = DensePolynomial::zero();
+        for ((&wi, &xi), &yi) in ws.iter().zip(xs).zip(ys) {
+            let d = crate::utils::z_of_point(&xi);
+            let mut z = &l / &d;
+            z = &z * wi;
+            z = &z * yi;
+            res = res + z;
+        }
+        res
     }
-    res
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -197,36 +212,38 @@ mod tests {
     use ark_std::rand::Rng;
     use crate::Poly;
 
+    type TestShplonk = Shplonk<F, IdentityCommitment>;
+
     impl<G> ShplonkTranscript<F, G> for (F, F) {
         fn get_gamma(&mut self) -> F { self.0 }
 
-        fn commit_to_q(&mut self, _q_comm: &G) {}
+        fn commit_to_q(&mut self, q_comm: &G) {}
 
         fn get_zeta(&mut self) -> F { self.1 }
     }
 
-    pub fn generate_test_data<R, F, C>(
+    pub fn generate_test_data<R, F, CS>(
         rng: &mut R,
+        ck: &<Shplonk<F, CS> as PCS<F>>::CK,
         d: usize, // degree of polynomials
         t: usize, // number of polynomials
         xss: &Vec<Vec<F>>, // vecs of opening points per polynomial
-        scheme: &C, // commitment scheme
     ) -> (
         Vec<Poly<F>>, // polynomials
-        Vec<C::G>, // commitments
+        Vec<CS::G>, // commitments
         Vec<Vec<F>>, // evaluations per polynomial
     ) where
         R: Rng,
         F: PrimeField,
-        C: CommitmentScheme<F, Poly<F>>
+        CS: PCS<F>,
     {
         // polynomials
-        let fs: Vec<Poly<F>> = (0..t)
-            .map(|_| Poly::rand(d, rng))
+        let fs: Vec<_> = (0..t)
+            .map(|_| Poly::<F>::rand(d, rng))
             .collect();
         // commitments
         let fcs: Vec<_> = fs.iter()
-            .map(|fi| scheme.commit(fi))
+            .map(|fi| CS::commit(&ck, fi))
             .collect();
 
         // evaluations per polynomial
@@ -244,7 +261,8 @@ mod tests {
     #[test]
     fn test_shplonk() {
         let rng = &mut test_rng();
-        let scheme = IdentityCommitment {};
+
+        let (ck, ok, vk) = TestShplonk::setup();
 
         let t = 4; // number of polynomials
         let max_m = 3; // maximal number of opening points per polynomial
@@ -255,7 +273,7 @@ mod tests {
             .collect();
 
         let (fs, fcs, yss) =
-            generate_test_data(rng, 15, 4, &xss, &scheme);
+            generate_test_data::<_, _, IdentityCommitment>(rng, &ck,15, 4, &xss);
 
         let sets_of_xss: Vec<_> = xss.iter()
             .map(|xs| HashSet::from_iter(xs.iter().cloned()))
@@ -263,11 +281,12 @@ mod tests {
 
         let transcript = &mut (F::rand(rng), F::rand(rng));
 
-        let (qc, qlc) = open(&fs, sets_of_xss.as_slice(), &scheme, transcript);
+        let (qc, qlc) = TestShplonk::open_many(&ck, &ok, &fs, sets_of_xss.as_slice(), transcript);
 
-        let lc = get_linearization_commitment(&fcs, &qc, &xss, &yss, &scheme, transcript);
+        let onec = ().commit_to_one();
+        let lc = TestShplonk::get_linearization_commitment(&fcs, &qc, &onec, &xss, &yss, transcript);
         assert!(lc.0.evaluate(&transcript.1).is_zero());
 
-        assert!(verify(&fcs, (qc, qlc), &xss, &yss, &scheme, transcript))
+        assert!(TestShplonk::verify_many(&vk, &fcs, &(qc, qlc), &xss, &yss, transcript))
     }
 }

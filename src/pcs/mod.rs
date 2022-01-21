@@ -1,8 +1,12 @@
-use ark_ff::PrimeField;
+use ark_ff::{PrimeField, Field};
 use ark_std::ops::{Add, Sub};
 use ark_std::iter::Sum;
+use ark_poly::{UVPolynomial, Polynomial};
+use ark_poly::univariate::{DensePolynomial, DenseOrSparsePolynomial};
+use crate::Poly;
 
-pub trait AdditiveCommitment<F: PrimeField>:
+
+pub trait CommitmentSpace<F: PrimeField>:
 Sized
 + Clone
 + Add<Self, Output=Self>
@@ -12,13 +16,34 @@ Sized
     fn mul(&self, by: F) -> Self;
 }
 
+// pub trait EuclideanPolynomial<F: PrimeField>: UVPolynomial<F> {
+//     fn divide_with_q_and_r(&self, divisor: &DensePolynomial<F>) -> (Self, Self);
+// }
+//
+// impl<F: PrimeField> EuclideanPolynomial<F> for DensePolynomial<F> {
+//     fn divide_with_q_and_r(&self, divisor: &DensePolynomial<F>) -> (Self, Self) {
+//         let a: DenseOrSparsePolynomial<F> = self.into();
+//         let b: DenseOrSparsePolynomial<F> = divisor.into();
+//         a.divide_with_q_and_r(&b).unwrap()
+//     }
+// }
+
+pub trait VerifierKey<F, G> {
+    fn commit_to_one(&self) -> G;
+}
+
 /// Polynomial commitment scheme.
-pub trait CommitmentScheme<F: PrimeField, P> {
-    type G: AdditiveCommitment<F>;
-    fn commit(&self, poly: &P) -> Self::G;
-    fn commit_const(&self, c: &F) -> Self::G;
-    /// Verifies that `p(x) = y` given the commitment to `p` and a proof.
-    fn verify(&self, commitment: &Self::G, x: &F, y: F, proof: &Self::G) -> bool; // TODO: generalize proof type
+pub trait PCS<F: PrimeField> {
+    type G: CommitmentSpace<F>;
+    type CK;
+    type OK;
+    type VK: VerifierKey<F, Self::G>;
+    type Proof;
+
+    fn setup() -> (Self::CK, Self::OK, Self::VK);
+    fn commit(ck: &Self::CK, p: &Poly<F>) -> Self::G;
+    fn open(ok: &Self::OK, p: &Poly<F>, x: &F) -> Self::Proof; //TODO: eval?
+    fn verify(vk: &Self::VK, c: &Self::G, x: &F, z: &F, proof: &Self::Proof) -> bool;
 }
 
 #[cfg(test)]
@@ -27,63 +52,82 @@ pub(crate) mod tests {
     use ark_ff::Field;
     use ark_poly::UVPolynomial;
     use ark_std::marker::PhantomData;
+    use ark_ff::Zero;
+    use ark_poly::univariate::DensePolynomial;
+    use crate::Poly;
 
     #[derive(Clone)]
-    pub struct WrappedPolynomial<F: Field, P: UVPolynomial<F>>(pub P, PhantomData<F>);
+    pub struct WrappedPolynomial<F: PrimeField>(pub Poly<F>);
 
-    impl<F: Field, P: UVPolynomial<F>> WrappedPolynomial<F, P> {
+    impl<F: PrimeField> WrappedPolynomial<F> {
         fn evaluate(&self, x: &F) -> F {
             self.0.evaluate(x)
         }
     }
 
-    impl<F: PrimeField, P: UVPolynomial<F>> Add<Self> for WrappedPolynomial<F, P> {
-        type Output = WrappedPolynomial<F, P>;
+    impl<F: PrimeField> Add<Self> for WrappedPolynomial<F> {
+        type Output = WrappedPolynomial<F>;
 
-        fn add(self, other: WrappedPolynomial<F, P>) -> Self::Output {
-            WrappedPolynomial(self.0 + other.0, PhantomData)
+        fn add(self, other: WrappedPolynomial<F>) -> Self::Output {
+            WrappedPolynomial(self.0 + other.0)
         }
     }
 
-    impl<F: PrimeField, P: UVPolynomial<F>> Sub<Self> for WrappedPolynomial<F, P> {
-        type Output = WrappedPolynomial<F, P>;
+    impl<F: PrimeField> Sub<Self> for WrappedPolynomial<F> {
+        type Output = WrappedPolynomial<F>;
 
-        fn sub(self, other: WrappedPolynomial<F, P>) -> Self::Output {
+        fn sub(self, other: WrappedPolynomial<F>) -> Self::Output {
             let mut temp = self.0;
             temp -= &other.0; //TODO
-            WrappedPolynomial(temp, PhantomData)
+            WrappedPolynomial(temp)
         }
     }
 
-    impl<F: PrimeField, P: UVPolynomial<F>> core::iter::Sum<Self> for WrappedPolynomial<F, P> {
+    impl<F: PrimeField> core::iter::Sum<Self> for WrappedPolynomial<F> {
         fn sum<I: Iterator<Item=Self>>(iter: I) -> Self {
             iter.reduce(|a, b| a + b).unwrap()
         }
     }
 
-    impl<F: PrimeField, P: UVPolynomial<F>> AdditiveCommitment<F> for WrappedPolynomial<F, P> {
+    impl<F: PrimeField> CommitmentSpace<F> for WrappedPolynomial<F> {
         fn mul(&self, by: F) -> Self {
-            let mut temp = P::zero(); //TODO
+            let mut temp = Poly::zero(); //TODO
             temp += (by, &self.0);
-            WrappedPolynomial(temp, PhantomData)
+            WrappedPolynomial(temp)
         }
     }
 
+
+    impl<F: PrimeField> VerifierKey<F, WrappedPolynomial<F>> for () {
+        fn commit_to_one(&self) -> WrappedPolynomial<F> {
+            WrappedPolynomial(Poly::from_coefficients_slice(&[F::one()]))
+        }
+    }
+
+
     pub struct IdentityCommitment {}
 
-    impl<F: PrimeField, P: UVPolynomial<F>> CommitmentScheme<F, P> for IdentityCommitment {
-        type G = WrappedPolynomial<F, P>;
+    impl<F: PrimeField> PCS<F> for IdentityCommitment {
+        type G = WrappedPolynomial<F>;
+        type CK = ();
+        type OK = ();
+        type VK = ();
+        type Proof = WrappedPolynomial<F>;
 
-        fn commit(&self, poly: &P) -> Self::G {
-            WrappedPolynomial(poly.clone(), PhantomData)
+        fn setup() -> (Self::CK, Self::OK, Self::VK) {
+            ((), (), ())
         }
 
-        fn commit_const(&self, c: &F) -> Self::G {
-            WrappedPolynomial(P::from_coefficients_vec(vec![*c]), PhantomData)
+        fn commit(ck: &Self::CK, p: &Poly<F>) -> Self::G {
+            WrappedPolynomial(p.clone())
         }
 
-        fn verify(&self, commitment: &Self::G, x: &F, y: F, _proof: &Self::G) -> bool {
-            commitment.evaluate(x) == y
+        fn open(ok: &Self::OK, p: &Poly<F>, x: &F) -> Self::Proof {
+            WrappedPolynomial(p.clone())
+        }
+
+        fn verify(vk: &Self::VK, c: &Self::G, x: &F, z: &F, proof: &Self::Proof) -> bool {
+            c.evaluate(x) == *z
         }
     }
 }
