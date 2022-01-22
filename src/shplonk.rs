@@ -1,7 +1,7 @@
 use ark_std::Zero;
-use ark_ff::{Field, FftField, PrimeField};
+use ark_ff::PrimeField;
 use ark_poly::{UVPolynomial, Polynomial};
-use ark_poly::univariate::{DensePolynomial, DenseOrSparsePolynomial};
+use ark_poly::univariate::DensePolynomial;
 
 use std::collections::HashSet;
 
@@ -95,7 +95,7 @@ impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
         }
         let l = &(&l - &q) * z_zeta;
 
-        let z_of_zeta = crate::utils::z_of_point(&zeta);
+        // let z_of_zeta = crate::utils::z_of_point(&zeta);
         // let (q_of_l, r_of_l) = l.divide_with_q_and_r(&z_of_zeta);
         // assert!(r_of_l.is_zero());
         // let q_of_l1 = CS::commit(ck, &q_of_l);//scheme.commit(&q_of_l);
@@ -217,7 +217,7 @@ mod tests {
     impl<G> ShplonkTranscript<F, G> for (F, F) {
         fn get_gamma(&mut self) -> F { self.0 }
 
-        fn commit_to_q(&mut self, q_comm: &G) {}
+        fn commit_to_q(&mut self, _q_comm: &G) {}
 
         fn get_zeta(&mut self) -> F { self.1 }
     }

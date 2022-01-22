@@ -1,10 +1,8 @@
-use ark_ff::{PrimeField, Field};
-use ark_std::ops::{Add, Sub};
+use ark_ff::PrimeField;
 use ark_std::iter::Sum;
-use ark_poly::{UVPolynomial, Polynomial};
-use ark_poly::univariate::{DensePolynomial, DenseOrSparsePolynomial};
-use crate::Poly;
+use ark_std::ops::{Add, Sub};
 
+use crate::Poly;
 
 pub trait CommitmentSpace<F: PrimeField>:
 Sized
@@ -15,18 +13,6 @@ Sized
 {
     fn mul(&self, by: F) -> Self;
 }
-
-// pub trait EuclideanPolynomial<F: PrimeField>: UVPolynomial<F> {
-//     fn divide_with_q_and_r(&self, divisor: &DensePolynomial<F>) -> (Self, Self);
-// }
-//
-// impl<F: PrimeField> EuclideanPolynomial<F> for DensePolynomial<F> {
-//     fn divide_with_q_and_r(&self, divisor: &DensePolynomial<F>) -> (Self, Self) {
-//         let a: DenseOrSparsePolynomial<F> = self.into();
-//         let b: DenseOrSparsePolynomial<F> = divisor.into();
-//         a.divide_with_q_and_r(&b).unwrap()
-//     }
-// }
 
 pub trait VerifierKey<F, G> {
     fn commit_to_one(&self) -> G;
@@ -42,19 +28,21 @@ pub trait PCS<F: PrimeField> {
 
     fn setup() -> (Self::CK, Self::OK, Self::VK);
     fn commit(ck: &Self::CK, p: &Poly<F>) -> Self::G;
-    fn open(ok: &Self::OK, p: &Poly<F>, x: &F) -> Self::Proof; //TODO: eval?
+    fn open(ok: &Self::OK, p: &Poly<F>, x: &F) -> Self::Proof;
+    //TODO: eval?
     fn verify(vk: &Self::VK, c: &Self::G, x: &F, z: &F, proof: &Self::Proof) -> bool;
 }
 
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use ark_ff::Field;
-    use ark_poly::UVPolynomial;
-    use ark_std::marker::PhantomData;
+
     use ark_ff::Zero;
-    use ark_poly::univariate::DensePolynomial;
+    use ark_poly::UVPolynomial;
+    use ark_poly::Polynomial;
+
     use crate::Poly;
+
 
     #[derive(Clone)]
     pub struct WrappedPolynomial<F: PrimeField>(pub Poly<F>);
@@ -112,21 +100,21 @@ pub(crate) mod tests {
         type CK = ();
         type OK = ();
         type VK = ();
-        type Proof = WrappedPolynomial<F>;
+        type Proof = ();
 
         fn setup() -> (Self::CK, Self::OK, Self::VK) {
             ((), (), ())
         }
 
-        fn commit(ck: &Self::CK, p: &Poly<F>) -> Self::G {
+        fn commit(_ck: &Self::CK, p: &Poly<F>) -> Self::G {
             WrappedPolynomial(p.clone())
         }
 
-        fn open(ok: &Self::OK, p: &Poly<F>, x: &F) -> Self::Proof {
-            WrappedPolynomial(p.clone())
+        fn open(_ok: &Self::OK, _p: &Poly<F>, _x: &F) -> Self::Proof {
+            ()
         }
 
-        fn verify(vk: &Self::VK, c: &Self::G, x: &F, z: &F, proof: &Self::Proof) -> bool {
+        fn verify(_vk: &Self::VK, c: &Self::G, x: &F, z: &F, _proof: &Self::Proof) -> bool {
             c.evaluate(x) == *z
         }
     }
