@@ -6,6 +6,7 @@ use ark_ff::FftField;
 use ark_poly::UVPolynomial;
 use ark_std::marker::PhantomData;
 use ark_std::ops::Div;
+use crate::utils;
 
 pub struct Fflonk<F: FftField, P: UVPolynomial<F>> {
     _field: PhantomData<F>,
@@ -68,10 +69,24 @@ impl<F: FftField, P: UVPolynomial<F>> Fflonk<F, P>
     // The input opening is given as an evaluation point x (it's t-th root)
     // and a list of values fj(x), j=1,...,t.
     // The output opening is returned as the vanishing polynomial z of the points and the remainder r.
-    fn opening(t: usize, root_of_x: F, evals_at_x: &[F]) -> (P, P) {
+    fn opening_as_polynomials(t: usize, root_of_x: F, evals_at_x: &[F]) -> (P, P) {
         let z = Self::z_of_roots(t, root_of_x);
         let r = P::from_coefficients_slice(evals_at_x);
         (z, r)
+    }
+
+    // Let z be some t-th root of x. Then all the t roots of x of degree t are given by zj = z*w^j, j=0,...,t-1, where w is a primitive t-th root of unity.
+    // Given vi=fi(x), i=0,...,t-1 -- evaluations of t polynomials each in the same point x,
+    // computes sum(vi*zj^i, i=0,...,t-1), j=0,...,t-1.
+    fn opening_as_points(t: usize, root_of_x: F, evals_at_x: &[F]) -> (Vec<F>, Vec<F>) {
+        assert_eq!(evals_at_x.len(), t); //TODO: may be 0-padded
+        let roots = Self::roots(t, root_of_x);
+        let evals_at_roots = roots.iter().map(|&root| {
+            evals_at_x.iter()
+                .zip(utils::powers(root, t-1))
+                .map(|(&eval, root)| eval * root).sum()
+        }).collect();
+        (roots, evals_at_roots)
     }
 
     // Reduces opening of f1,...,ft in m points to opening of g = combine(f1,...,ft) in m*t points,
@@ -131,8 +146,16 @@ mod tests {
 
         let g = FflonkBw6::combine(t, &fs);
 
-        let (z, r) = FflonkBw6::opening(t, root_t_of_x, &fs_at_x);
+        let (z, r) = FflonkBw6::opening_as_polynomials(t, root_t_of_x, &fs_at_x);
+        let (xs, vs) = FflonkBw6::opening_as_points(t, root_t_of_x, &fs_at_x);
 
+        // g(xi) = vi
+        assert!(xs.iter().zip(vs.iter()).all(|(x, &v)| g.evaluate(x) == v));
+        // z -- vanishes xs
+        assert!(xs.iter().all(|x| z.evaluate(x).is_zero()));
+        // r -- interpolates vs in xs
+        assert!(xs.iter().zip(vs.iter()).all(|(x, &v)| r.evaluate(x) == v));
+        // g mod z = r
         let (_, g_mod_z) = DenseOrSparsePolynomial::divide_with_q_and_r(
             &(&g.into()),
             &(&z.into()),
@@ -185,7 +208,7 @@ mod tests {
             .map(|fi| fi.evaluate(&x))
             .collect();
 
-        let (z, r) = FflonkBw6::opening(t, root_t_of_x, &fs_at_x);
+        let (z, r) = FflonkBw6::opening_as_polynomials(t, root_t_of_x, &fs_at_x);
         let (xs, vs) = FflonkBw6::multiopening(t, &[root_t_of_x], &[fs_at_x]);
 
         assert!(xs.iter().all(|x| z.evaluate(x).is_zero()));
