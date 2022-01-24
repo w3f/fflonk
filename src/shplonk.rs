@@ -28,11 +28,10 @@ pub struct Shplonk<F: PrimeField, CS: PCS<F>> {
 impl<F: PrimeField, CS: PCS<F>> PCS<F> for Shplonk<F, CS> {
     type G = CS::G;
     type CK = CS::CK;
-    type OK = CS::OK;
     type VK = CS::VK;
     type Proof = CS::Proof;
 
-    fn setup() -> (Self::CK, Self::OK, Self::VK) {
+    fn setup() -> (Self::CK, Self::VK) {
         CS::setup()
     }
 
@@ -40,8 +39,8 @@ impl<F: PrimeField, CS: PCS<F>> PCS<F> for Shplonk<F, CS> {
         CS::commit(ck, p)
     }
 
-    fn open(ok: &Self::OK, p: &Poly<F>, x: &F) -> Self::Proof {
-        CS::open(ok, p, x)
+    fn open(ck: &Self::CK, p: &Poly<F>, x: &F) -> Self::Proof {
+        CS::open(ck, p, x)
     }
 
     fn verify(vk: &Self::VK, c: &Self::G, x: &F, z: &F, proof: &Self::Proof) -> bool {
@@ -52,7 +51,6 @@ impl<F: PrimeField, CS: PCS<F>> PCS<F> for Shplonk<F, CS> {
 impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
     pub fn open_many<T: ShplonkTranscript<F, CS::G>>(
         ck: &<Shplonk<F, CS> as PCS<F>>::CK,
-        ok: &<Shplonk<F, CS> as PCS<F>>::OK,
         fs: &[Poly<F>],
         xss: &[HashSet<F>],
         transcript: &mut T,
@@ -99,7 +97,7 @@ impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
         // let (q_of_l, r_of_l) = l.divide_with_q_and_r(&z_of_zeta);
         // assert!(r_of_l.is_zero());
         // let q_of_l1 = CS::commit(ck, &q_of_l);//scheme.commit(&q_of_l);
-        let q_of_l1 = CS::open(ok, &l, &zeta);
+        let q_of_l1 = CS::open(ck, &l, &zeta);
         (q_comm, q_of_l1)
     }
 
@@ -262,7 +260,7 @@ mod tests {
     fn test_shplonk() {
         let rng = &mut test_rng();
 
-        let (ck, ok, vk) = TestShplonk::setup();
+        let (ck, vk) = TestShplonk::setup();
 
         let t = 4; // number of polynomials
         let max_m = 3; // maximal number of opening points per polynomial
@@ -281,7 +279,7 @@ mod tests {
 
         let transcript = &mut (F::rand(rng), F::rand(rng));
 
-        let (qc, qlc) = TestShplonk::open_many(&ck, &ok, &fs, sets_of_xss.as_slice(), transcript);
+        let (qc, qlc) = TestShplonk::open_many(&ck, &fs, sets_of_xss.as_slice(), transcript);
 
         let onec = ().commit_to_one();
         let lc = TestShplonk::get_linearization_commitment(&fcs, &qc, &onec, &xss, &yss, transcript);

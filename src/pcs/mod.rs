@@ -22,13 +22,12 @@ pub trait VerifierKey<F, G> {
 pub trait PCS<F: PrimeField> {
     type G: CommitmentSpace<F>;
     type CK;
-    type OK;
     type VK: VerifierKey<F, Self::G>;
     type Proof;
 
-    fn setup() -> (Self::CK, Self::OK, Self::VK);
+    fn setup() -> (Self::CK, Self::VK);
     fn commit(ck: &Self::CK, p: &Poly<F>) -> Self::G;
-    fn open(ok: &Self::OK, p: &Poly<F>, x: &F) -> Self::Proof;
+    fn open(ck: &Self::CK, p: &Poly<F>, x: &F) -> Self::Proof;
     //TODO: eval?
     fn verify(vk: &Self::VK, c: &Self::G, x: &F, z: &F, proof: &Self::Proof) -> bool;
 }
@@ -98,19 +97,18 @@ pub(crate) mod tests {
     impl<F: PrimeField> PCS<F> for IdentityCommitment {
         type G = WrappedPolynomial<F>;
         type CK = ();
-        type OK = ();
         type VK = ();
         type Proof = ();
 
-        fn setup() -> (Self::CK, Self::OK, Self::VK) {
-            ((), (), ())
+        fn setup() -> (Self::CK, Self::VK) {
+            ((), ())
         }
 
         fn commit(_ck: &Self::CK, p: &Poly<F>) -> Self::G {
             WrappedPolynomial(p.clone())
         }
 
-        fn open(_ok: &Self::OK, _p: &Poly<F>, _x: &F) -> Self::Proof {
+        fn open(_ck: &Self::CK, _p: &Poly<F>, _x: &F) -> Self::Proof {
             ()
         }
 
