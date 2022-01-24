@@ -4,10 +4,12 @@ FFlonk: a Fast-Fourier inspired [verifier efficient version of PlonK](https://ep
 
 ## Building 
 
-´´´
+```
 cargo build --release
-´´´
+```
 
 ## Tests
 
+```
 cargo test --all
+```
