@@ -1,8 +1,15 @@
+pub mod kzg;
+
 use ark_ff::PrimeField;
 use ark_std::iter::Sum;
 use ark_std::ops::{Add, Sub};
 
 use crate::Poly;
+use ark_serialize::*;
+use ark_std::io::{Read, Write};
+use ark_std::fmt::Debug;
+use ark_std::rand::Rng;
+
 
 pub trait CommitmentSpace<F: PrimeField>:
 Sized
@@ -14,23 +21,54 @@ Sized
     fn mul(&self, by: F) -> Self;
 }
 
-pub trait VerifierKey<F, G> {
-    fn commit_to_one(&self) -> G;
+
+/// Can be used to commit and open commitments to DensePolynomial<F> of degree up to max_degree.
+pub trait CommitterKey: Clone + Debug + CanonicalSerialize + CanonicalDeserialize {
+    /// Maximal degree of a polynomial supported.
+    fn max_degree(&self) -> usize;
+
+    /// Maximal number of evaluations supported when committing in the Lagrangian base.
+    fn max_evals(&self) -> usize {
+        self.max_degree() + 1
+    }
 }
+
+
+/// Can be used to verify openings to commitments.
+pub trait VerifierKey: Clone + Debug {
+    /// Maximal number of openings of the same commitment that can be verified.
+    fn max_points(&self) -> usize {
+        1
+    }
+}
+
+
+pub trait PcsParams {
+    type CommitterKey: CommitterKey;
+    type VerifierKey: VerifierKey;
+    fn ck(&self) -> Self::CommitterKey; //TODO: trim
+    fn rk(&self) -> Self::VerifierKey;
+}
+
 
 /// Polynomial commitment scheme.
 pub trait PCS<F: PrimeField> {
     type G: CommitmentSpace<F>;
-    type CK;
-    type VK: VerifierKey<F, Self::G>;
+    type Params: PcsParams;
     type Proof;
 
-    fn setup() -> (Self::CK, Self::VK);
-    fn commit(ck: &Self::CK, p: &Poly<F>) -> Self::G;
-    fn open(ck: &Self::CK, p: &Poly<F>, x: &F) -> Self::Proof;
-    //TODO: eval?
-    fn verify(vk: &Self::VK, c: &Self::G, x: &F, z: &F, proof: &Self::Proof) -> bool;
+    fn setup<R: Rng>(max_degree: usize, rng: &mut R) -> Self::Params;
+
+    fn commit(ck: &<Self::Params as PcsParams>::CommitterKey, p: &Poly<F>) -> Self::G;
+
+    fn open(ck: &<Self::Params as PcsParams>::CommitterKey, p: &Poly<F>, x: F) -> Self::Proof; //TODO: eval?
+
+    fn verify(pvk: &<Self::Params as PcsParams>::VerifierKey, c: &Self::G, x: F, z: F, proof: Self::Proof) -> bool;
+
+    /// Commit to degree-0 polynomials (see shplonk scheme #2 ot Halo infinite 4.2).
+    fn commit_to_one(pvk: &<Self::Params as PcsParams>::VerifierKey) -> Self::G;
 }
+
 
 #[cfg(test)]
 pub(crate) mod tests {
@@ -41,7 +79,6 @@ pub(crate) mod tests {
     use ark_poly::Polynomial;
 
     use crate::Poly;
-
 
     #[derive(Clone)]
     pub struct WrappedPolynomial<F: PrimeField>(pub Poly<F>);
@@ -85,9 +122,29 @@ pub(crate) mod tests {
     }
 
 
-    impl<F: PrimeField> VerifierKey<F, WrappedPolynomial<F>> for () {
-        fn commit_to_one(&self) -> WrappedPolynomial<F> {
-            WrappedPolynomial(Poly::from_coefficients_slice(&[F::one()]))
+    impl CommitterKey for () {
+        fn max_degree(&self) -> usize {
+            usize::MAX >> 1
+        }
+    }
+
+    impl VerifierKey for () {
+        fn max_points(&self) -> usize {
+            1
+        }
+    }
+
+
+    impl PcsParams for () {
+        type CommitterKey = ();
+        type VerifierKey = ();
+
+        fn ck(&self) -> Self::CommitterKey {
+            ()
+        }
+
+        fn rk(&self) -> Self::VerifierKey {
+            ()
         }
     }
 
@@ -96,24 +153,27 @@ pub(crate) mod tests {
 
     impl<F: PrimeField> PCS<F> for IdentityCommitment {
         type G = WrappedPolynomial<F>;
-        type CK = ();
-        type VK = ();
+        type Params = ();
         type Proof = ();
 
-        fn setup() -> (Self::CK, Self::VK) {
-            ((), ())
-        }
-
-        fn commit(_ck: &Self::CK, p: &Poly<F>) -> Self::G {
-            WrappedPolynomial(p.clone())
-        }
-
-        fn open(_ck: &Self::CK, _p: &Poly<F>, _x: &F) -> Self::Proof {
+        fn setup<R: Rng>(max_degree: usize, rng: &mut R) -> Self::Params {
             ()
         }
 
-        fn verify(_vk: &Self::VK, c: &Self::G, x: &F, z: &F, _proof: &Self::Proof) -> bool {
-            c.evaluate(x) == *z
+        fn commit(ck: &(), p: &Poly<F>) -> Self::G {
+            WrappedPolynomial(p.clone())
+        }
+
+        fn open(ck: &(), p: &Poly<F>, x: F) -> Self::Proof {
+            ()
+        }
+
+        fn verify(pvk: &(), c: &Self::G, x: F, z: F, proof: Self::Proof) -> bool {
+            c.evaluate(&x) == z
+        }
+
+        fn commit_to_one(pvk: &()) -> Self::G {
+            WrappedPolynomial(Poly::from_coefficients_slice(&[F::one()]))
         }
     }
 }

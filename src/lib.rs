@@ -2,8 +2,9 @@ use ark_ff::PrimeField;
 use ark_poly::univariate::{DensePolynomial, DenseOrSparsePolynomial};
 use crate::fflonk::Fflonk;
 use crate::shplonk::{ShplonkTranscript, Shplonk};
-use crate::pcs::{PCS};
+use crate::pcs::{PCS, PcsParams};
 use std::marker::PhantomData;
+use ark_std::rand::Rng;
 
 pub mod shplonk;
 pub mod fflonk;
@@ -32,12 +33,13 @@ pub struct FflonkyKzg<F: PrimeField, CS: PCS<F>> {
 }
 
 impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
-    pub fn setup() -> (<Shplonk<F, CS> as PCS<F>>::CK, <Shplonk<F, CS> as PCS<F>>::VK) {
-        Shplonk::<F, CS>::setup()
+
+    pub fn setup<R: Rng>(max_degree: usize, rng: &mut R) -> <Shplonk<F, CS> as PCS<F>>::Params {
+        <Shplonk<F, CS> as PCS<F>>::setup(max_degree, rng)
     }
 
     pub fn open<T: ShplonkTranscript<F, CS::G>>(
-        ck: &<Shplonk<F, CS> as PCS<F>>::CK,
+        ck: &<<Shplonk<F, CS> as PCS<F>>::Params as PcsParams>::CommitterKey,
         fss: &[Vec<Poly<F>>], // vecs of polynomials to combine
         ts: &[usize], // lengths of each combination
         // TODO: ts can be inferred from li := len(fss[i]) as ti = min(x : x >= li and x | p-1)
@@ -64,7 +66,7 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
     }
 
     pub fn verify<T: ShplonkTranscript<F, CS::G>>(
-        vk: &<Shplonk<F, CS> as PCS<F>>::VK,
+        vk: &<<Shplonk<F, CS> as PCS<F>>::Params as PcsParams>::VerifierKey,
         gcs: &[CS::G],
         ts: &[usize],
         proof: (CS::G, CS::Proof),
@@ -80,11 +82,11 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
                 Fflonk::<F, Poly<F>>::multiopening(*t, roots, vs)
             ).unzip();
 
-        Shplonk::<F, CS>::verify_many(vk, &gcs, &proof, &xss, &yss, transcript)
+        Shplonk::<F, CS>::verify_many(vk, &gcs, proof, &xss, &yss, transcript)
     }
 
     pub fn open_single<T: ShplonkTranscript<F, CS::G>>(
-        ck: &<Shplonk<F, CS> as PCS<F>>::CK,
+        ck: &<<Shplonk<F, CS> as PCS<F>>::Params as PcsParams>::CommitterKey,
         fs: &[Poly<F>], // polynomials to combine
         t: usize, // lengths of the combination
         roots: &[F], // set of opening points presented as t-th roots
@@ -95,7 +97,7 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
     }
 
     pub fn verify_single<T: ShplonkTranscript<F, CS::G>>(
-        vk: &<Shplonk<F, CS> as PCS<F>>::VK,
+        vk: &<<Shplonk<F, CS> as PCS<F>>::Params as PcsParams>::VerifierKey,
         gc: &CS::G,
         t: usize,
         proof: (CS::G, CS::Proof),
@@ -118,9 +120,8 @@ mod tests {
     use ark_poly::{UVPolynomial, Polynomial};
 
     use crate::pcs::tests::IdentityCommitment;
-
-    pub type F = ark_bw6_761::Fr;
-    type TestFlonk = FflonkyKzg<F, IdentityCommitment>;
+    use ark_bw6_761::{BW6_761, Fr};
+    use crate::pcs::kzg::KZG;
 
     fn generate_test_data<R, F>(
         rng: &mut R,
@@ -159,12 +160,11 @@ mod tests {
         (fs, roots, vss)
     }
 
-    #[test]
-    fn test_fflonk_single() {
+    fn _test_fflonk_single<F: PrimeField, CS: PCS<F>>() {
         let rng = &mut test_rng();
         let transcript = &mut (F::rand(rng), F::rand(rng));
 
-        let (ck, vk) = TestFlonk::setup();
+        let params = FflonkyKzg::<F, CS>::setup(123, rng);
 
         let t = 4; // number of polynomials in a combination
         let m = 3; // number of opening points per a combination
@@ -173,18 +173,17 @@ mod tests {
         let (fs, roots, vss) = generate_test_data(rng, d, t, m);
 
         let g = Fflonk::combine(t, &fs);
-        let gc = IdentityCommitment::commit(&(), &g);
+        let gc = CS::commit(&params.ck(), &g);
 
-        let proof = TestFlonk::open_single(&ck, &fs, t, &roots, transcript);
-        assert!(TestFlonk::verify_single(&vk, &gc, t, proof, &roots, &vss, transcript));
+        let proof = FflonkyKzg::<F, CS>::open_single(&params.ck(), &fs, t, &roots, transcript);
+        assert!(FflonkyKzg::<F, CS>::verify_single(&params.rk(), &gc, t, proof, &roots, &vss, transcript));
     }
 
-    #[test]
-    fn test_fflonk() {
+    fn _test_fflonk<F: PrimeField, CS: PCS<F>>() {
         let rng = &mut test_rng();
         let transcript = &mut (F::rand(rng), F::rand(rng));
 
-        let (ck, vk) = TestFlonk::setup();
+        let params = FflonkyKzg::<F, CS>::setup(123, rng);
 
         let ds = [31, 15];
         let ts = [2, 4]; // number of polynomials in a combination
@@ -205,10 +204,30 @@ mod tests {
 
         let gcs: Vec<_> = fss.iter()
             .zip(ts)
-            .map(|(fs, t)| IdentityCommitment::commit(&(), &Fflonk::combine(t, &fs)))
+            .map(|(fs, t)| CS::commit(&params.ck(), &Fflonk::combine(t, &fs)))
             .collect();
 
-        let proof = TestFlonk::open(&ck, &fss, &ts, &rootss, transcript);
-        assert!(TestFlonk::verify(&vk, &gcs, &ts, proof, &rootss, &vsss, transcript));
+        let proof = FflonkyKzg::<F, CS>::open(&params.ck(), &fss, &ts, &rootss, transcript);
+        assert!(FflonkyKzg::<F, CS>::verify(&params.rk(), &gcs, &ts, proof, &rootss, &vsss, transcript));
+    }
+
+    #[test]
+    fn test_fflonk_single_id() {
+        _test_fflonk_single::<Fr, IdentityCommitment>();
+    }
+
+    #[test]
+    fn test_fflonk_single_kzg() {
+        _test_fflonk_single::<Fr, KZG<BW6_761>>();
+    }
+
+    #[test]
+    fn test_fflonk_id() {
+        _test_fflonk::<Fr, IdentityCommitment>();
+    }
+
+    #[test]
+    fn test_fflonk_kzg() {
+        _test_fflonk::<Fr, KZG<BW6_761>>();
     }
 }
