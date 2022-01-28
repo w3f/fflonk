@@ -90,7 +90,14 @@ pub struct KzgVerifierKey<E: PairingEngine> {
 }
 
 impl<E: PairingEngine> VerifierKey for KzgVerifierKey<E> {
-    fn max_points(&self) -> usize {
-        1
+
+}
+
+impl<E:PairingEngine> From<KzgVerifierKey<E>> for KzgCommitterKey<E::G1Affine> {
+    fn from(vk: KzgVerifierKey<E>) -> Self {
+        KzgCommitterKey {
+            powers_in_g1: vec![vk.g1]
+        }
     }
 }
+

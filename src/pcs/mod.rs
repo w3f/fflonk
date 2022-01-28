@@ -36,7 +36,7 @@ pub trait CommitterKey: Clone + Debug + CanonicalSerialize + CanonicalDeserializ
 
 /// Can be used to verify openings to commitments.
 pub trait VerifierKey: Clone + Debug {
-    /// Maximal number of openings of the same commitment that can be verified.
+    /// Maximal number of openings that can be verified.
     fn max_points(&self) -> usize {
         1
     }
@@ -45,7 +45,7 @@ pub trait VerifierKey: Clone + Debug {
 
 pub trait PcsParams {
     type CK: CommitterKey;
-    type VK: VerifierKey;
+    type VK: VerifierKey + Into<Self::CK>;
     fn ck(&self) -> Self::CK; //TODO: trim
     fn vk(&self) -> Self::VK;
 }
@@ -64,9 +64,6 @@ pub trait PCS<F: PrimeField> {
     fn open(ck: &<Self::Params as PcsParams>::CK, p: &Poly<F>, x: F) -> Self::Proof; //TODO: eval?
 
     fn verify(vk: &<Self::Params as PcsParams>::VK, c: &Self::G, x: F, z: F, proof: Self::Proof) -> bool;
-
-    /// Commit to degree-0 polynomials (see shplonk scheme #2 ot Halo infinite 4.2).
-    fn commit_to_one(pvk: &<Self::Params as PcsParams>::VK) -> Self::G;
 }
 
 
@@ -170,10 +167,6 @@ pub(crate) mod tests {
 
         fn verify(_vk: &(), c: &Self::G, x: F, z: F, _proof: Self::Proof) -> bool {
             c.evaluate(&x) == z
-        }
-
-        fn commit_to_one(_pvk: &()) -> Self::G {
-            WrappedPolynomial(Poly::from_coefficients_slice(&[F::one()]))
         }
     }
 }

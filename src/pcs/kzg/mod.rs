@@ -73,10 +73,6 @@ impl<E: PairingEngine> PCS<E::Fr> for KZG<E> {
             (proof.into(), vk.tau_in_g2.clone()),
         ]).is_one()
     }
-
-    fn commit_to_one(pvk: &KzgVerifierKey<E>) -> Self::G {
-        KzgCommitment(pvk.g1.into_projective())
-    }
 }
 
 #[cfg(test)]
