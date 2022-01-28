@@ -6,7 +6,7 @@ use ark_poly::univariate::DensePolynomial;
 use std::collections::HashSet;
 
 use crate::EuclideanPolynomial;
-use crate::pcs::{PCS, CommitmentSpace, VerifierKey, PcsParams};
+use crate::pcs::{PCS, CommitmentSpace, PcsParams};
 
 
 use std::marker::PhantomData;

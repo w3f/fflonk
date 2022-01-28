@@ -1,6 +1,6 @@
 use ark_ec::{PairingEngine, ProjectiveCurve};
 use ark_std::rand::RngCore;
-use ark_ff::{UniformRand, PrimeField, BitIteratorBE, Zero, BitIteratorLE, FftField, FftParameters};
+use ark_ff::{UniformRand, PrimeField, FftField, FftParameters};
 use crate::utils;
 use ark_ec::msm::FixedBase;
 
@@ -73,9 +73,8 @@ impl<E: PairingEngine> URS<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ark_bw6_761::{BW6_761, G1Projective, Fr};
+    use ark_bw6_761::{BW6_761};
     use ark_std::test_rng;
-    use ark_ec::AffineCurve;
 
     fn _test_urs_generation<E: PairingEngine>(log_n1: usize, log_n2: usize) {
         let n1 = 1 << log_n1;
@@ -103,7 +102,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_max_bases() {
-        let max_bases = 1 << <Fr as FftField>::FftParams::TWO_ADICITY;
+        let max_bases = 1 << <ark_bw6_761::Fr as FftField>::FftParams::TWO_ADICITY;
         URS::<BW6_761>::generate(max_bases + 1, 0, &mut test_rng());
     }
 }

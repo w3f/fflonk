@@ -14,7 +14,6 @@ use ark_ec::msm::VariableBase;
 use ark_ff::{PrimeField, One};
 use ark_ec::AffineCurve;
 
-use ark_std::{end_timer, start_timer};
 use ark_std::rand::Rng;
 
 pub struct KZG<E: PairingEngine> {
@@ -83,15 +82,13 @@ impl<E: PairingEngine> PCS<E::Fr> for KZG<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ark_bw6_761::{BW6_761, G1Projective, Fr, G1Affine};
+    use ark_bw6_761::BW6_761;
     use ark_std::test_rng;
     use crate::pcs::PcsParams;
     use ark_poly::UVPolynomial;
     use ark_ff::UniformRand;
-    use ark_ec::ProjectiveCurve;
-    use ark_std::rand::prelude::SliceRandom;
-    use ark_ff::BigInteger;
-    use ark_std::cmp::Ordering::Greater;
+
+    use ark_std::{end_timer, start_timer};
 
     fn _test_minimal_kzg<E: PairingEngine>(log_n: usize) {
         let rng = &mut test_rng();
