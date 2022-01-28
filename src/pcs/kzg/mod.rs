@@ -41,8 +41,11 @@ impl<E: PairingEngine> KZG<E> {
 
 impl<E: PairingEngine> PCS<E::Fr> for KZG<E> {
     type G = KzgCommitment<E>;
-    type Params = URS<E>;
     type Proof = E::G1Affine;
+
+    type VK = KzgVerifierKey<E>;
+    type CK = KzgCommitterKey<E::G1Affine>;
+    type Params = URS<E>;
 
     fn setup<R: Rng>(max_degree: usize, rng: &mut R) -> Self::Params {
         URS::<E>::generate(max_degree + 1, 2, rng)

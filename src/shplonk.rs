@@ -6,7 +6,7 @@ use ark_poly::univariate::DensePolynomial;
 use std::collections::HashSet;
 
 use crate::EuclideanPolynomial;
-use crate::pcs::{PCS, CommitmentSpace, PcsParams};
+use crate::pcs::{PCS, CommitmentSpace};
 
 
 use std::marker::PhantomData;
@@ -25,35 +25,9 @@ pub struct Shplonk<F: PrimeField, CS: PCS<F>> {
     _pcs: PhantomData<CS>,
 }
 
-// impl<F: PrimeField, CS: PCS<F>> PCS<F> for Shplonk<F, CS> {
-//     type G = CS::G;
-//     type Params = CS::Params;
-//     type Proof = CS::Proof;
-//
-//     fn setup<R: Rng>(max_degree: usize, rng: &mut R) -> Self::Params {
-//         CS::setup(max_degree, rng)
-//     }
-//
-//     fn commit(ck: &<Self::Params as PcsParams>::CommitterKey, p: &Poly<F>) -> Self::G {
-//         CS::commit(ck, p)
-//     }
-//
-//     fn open(ck: &<Self::Params as PcsParams>::CommitterKey, p: &Poly<F>, x: F) -> Self::Proof {
-//         CS::open(ck, p, x)
-//     }
-//
-//     fn verify(vk: &<Self::Params as PcsParams>::VerifierKey, c: &Self::G, x: F, z: F, proof: Self::Proof) -> bool {
-//         CS::verify(vk, c, x, z, proof)
-//     }
-//
-//     fn commit_to_one(vk: &<Self::Params as PcsParams>::VerifierKey) -> Self::G {
-//         CS::commit_to_one(vk)
-//     }
-// }
-
 impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
     pub fn open_many<T: ShplonkTranscript<F, CS::G>>(
-        ck: &<CS::Params as PcsParams>::CK,
+        ck: &CS::CK,
         fs: &[Poly<F>],
         xss: &[HashSet<F>],
         transcript: &mut T,
@@ -154,7 +128,7 @@ impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
     }
 
     pub fn verify_many<T: ShplonkTranscript<F, CS::G>>(
-        vk: &<CS::Params as PcsParams>::VK,
+        vk: &CS::VK,
         fcs: &[CS::G],
         proof: (CS::G, CS::Proof),
         xss: &Vec<Vec<F>>,
@@ -214,7 +188,7 @@ mod tests {
     use crate::Poly;
     use ark_bw6_761::{BW6_761, Fr};
     use crate::pcs::kzg::KZG;
-
+    use crate::pcs::PcsParams;
 
     impl<F: PrimeField, G> ShplonkTranscript<F, G> for (F, F) {
         fn get_gamma(&mut self) -> F { self.0 }
@@ -226,7 +200,7 @@ mod tests {
 
     pub fn generate_test_data<R, F, CS>(
         rng: &mut R,
-        ck: &<CS::Params as PcsParams>::CK,
+        ck: &CS::CK,
         d: usize, // degree of polynomials
         t: usize, // number of polynomials
         xss: &Vec<Vec<F>>, // vecs of opening points per polynomial

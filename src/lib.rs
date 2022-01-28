@@ -2,7 +2,7 @@ use ark_ff::PrimeField;
 use ark_poly::univariate::{DensePolynomial, DenseOrSparsePolynomial};
 use crate::fflonk::Fflonk;
 use crate::shplonk::{ShplonkTranscript, Shplonk};
-use crate::pcs::{PCS, PcsParams};
+use crate::pcs::PCS;
 use std::marker::PhantomData;
 use ark_std::rand::Rng;
 
@@ -39,7 +39,7 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
     }
 
     pub fn open<T: ShplonkTranscript<F, CS::G>>(
-        ck: &<CS::Params as PcsParams>::CK,
+        ck: &CS::CK,
         fss: &[Vec<Poly<F>>], // vecs of polynomials to combine
         ts: &[usize], // lengths of each combination
         // TODO: ts can be inferred from li := len(fss[i]) as ti = min(x : x >= li and x | p-1)
@@ -66,7 +66,7 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
     }
 
     pub fn verify<T: ShplonkTranscript<F, CS::G>>(
-        vk: &<CS::Params as PcsParams>::VK,
+        vk: &CS::VK,
         gcs: &[CS::G],
         ts: &[usize],
         proof: (CS::G, CS::Proof),
@@ -86,7 +86,7 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
     }
 
     pub fn open_single<T: ShplonkTranscript<F, CS::G>>(
-        ck: &<CS::Params as PcsParams>::CK,
+        ck: &CS::CK,
         fs: &[Poly<F>], // polynomials to combine
         t: usize, // lengths of the combination
         roots: &[F], // set of opening points presented as t-th roots
@@ -97,7 +97,7 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
     }
 
     pub fn verify_single<T: ShplonkTranscript<F, CS::G>>(
-        vk: &<CS::Params as PcsParams>::VK,
+        vk: &CS::VK,
         gc: &CS::G,
         t: usize,
         proof: (CS::G, CS::Proof),
@@ -122,6 +122,7 @@ mod tests {
     use crate::pcs::tests::IdentityCommitment;
     use ark_bw6_761::{BW6_761, Fr};
     use crate::pcs::kzg::KZG;
+    use crate::pcs::PcsParams;
 
     fn generate_test_data<R, F>(
         rng: &mut R,

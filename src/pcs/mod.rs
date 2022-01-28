@@ -43,27 +43,29 @@ pub trait VerifierKey: Clone + Debug {
 }
 
 
-pub trait PcsParams {
-    type CK: CommitterKey;
-    type VK: VerifierKey + Into<Self::CK>;
-    fn ck(&self) -> Self::CK; //TODO: trim
-    fn vk(&self) -> Self::VK;
+pub trait PcsParams<CK, VK> {
+    fn ck(&self) -> CK; //TODO: trim
+    fn vk(&self) -> VK;
 }
 
 
 /// Polynomial commitment scheme.
 pub trait PCS<F: PrimeField> {
     type G: CommitmentSpace<F>;
-    type Params: PcsParams;
+
     type Proof;
+
+    type CK: CommitterKey;
+    type VK: VerifierKey + Into<Self::CK>;
+    type Params: PcsParams<Self::CK, Self::VK>;
 
     fn setup<R: Rng>(max_degree: usize, rng: &mut R) -> Self::Params;
 
-    fn commit(ck: &<Self::Params as PcsParams>::CK, p: &Poly<F>) -> Self::G;
+    fn commit(ck: &Self::CK, p: &Poly<F>) -> Self::G;
 
-    fn open(ck: &<Self::Params as PcsParams>::CK, p: &Poly<F>, x: F) -> Self::Proof; //TODO: eval?
+    fn open(ck: &Self::CK, p: &Poly<F>, x: F) -> Self::Proof; //TODO: eval?
 
-    fn verify(vk: &<Self::Params as PcsParams>::VK, c: &Self::G, x: F, z: F, proof: Self::Proof) -> bool;
+    fn verify(vk: &Self::VK, c: &Self::G, x: F, z: F, proof: Self::Proof) -> bool;
 }
 
 
@@ -72,7 +74,6 @@ pub(crate) mod tests {
     use super::*;
 
     use ark_ff::Zero;
-    use ark_poly::UVPolynomial;
     use ark_poly::Polynomial;
 
     use crate::Poly;
@@ -132,15 +133,12 @@ pub(crate) mod tests {
     }
 
 
-    impl PcsParams for () {
-        type CK = ();
-        type VK = ();
-
-        fn ck(&self) -> Self::CK {
+    impl PcsParams<(), ()> for () {
+        fn ck(&self) -> () {
             ()
         }
 
-        fn vk(&self) -> Self::VK {
+        fn vk(&self) -> () {
             ()
         }
     }
@@ -152,6 +150,8 @@ pub(crate) mod tests {
         type G = WrappedPolynomial<F>;
         type Params = ();
         type Proof = ();
+        type CK = ();
+        type VK = ();
 
         fn setup<R: Rng>(_max_degree: usize, _rng: &mut R) -> Self::Params {
             ()
