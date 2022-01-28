@@ -167,8 +167,7 @@ impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
         let lqc = proof.1; // commitment to the quotient of the linearization polynomial
         let onec = CS::commit_to_one(vk);
         let lc = Self::get_linearization_commitment(fcs, &qc, &onec, xss, yss, transcript);
-        // CS::verify(vk, &lc, transcript.get_zeta(), F::zero(), lqc)//verify(&lc, &transcript.get_zeta(), F::zero(), &lqc)
-        true
+        CS::verify(vk, &lc, transcript.get_zeta(), F::zero(), lqc)
     }
 
     fn interpolate(xs: &[F], ys: &[F]) -> DensePolynomial<F> {
@@ -286,10 +285,6 @@ mod tests {
 
         let (qc, qlc) = Shplonk::<F, CS>::open_many(&params.ck(), &fs, sets_of_xss.as_slice(), transcript);
 
-        // let onec = CS::commit_to_one(&params.rk());
-        // let lc = Shplonk::<F, CS>::get_linearization_commitment(&fcs, &qc, &onec, &xss, &yss, transcript);
-        // // assert!(lc.0.evaluate(&transcript.1).is_zero());
-        //
         assert!(Shplonk::<F, CS>::verify_many(&params.rk(), &fcs, (qc, qlc), &xss, &yss, transcript))
     }
 
