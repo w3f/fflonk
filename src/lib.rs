@@ -34,12 +34,12 @@ pub struct FflonkyKzg<F: PrimeField, CS: PCS<F>> {
 
 impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
 
-    pub fn setup<R: Rng>(max_degree: usize, rng: &mut R) -> <Shplonk<F, CS> as PCS<F>>::Params {
-        <Shplonk<F, CS> as PCS<F>>::setup(max_degree, rng)
+    pub fn setup<R: Rng>(max_degree: usize, rng: &mut R) -> CS::Params {
+        CS::setup(max_degree, rng)
     }
 
     pub fn open<T: ShplonkTranscript<F, CS::G>>(
-        ck: &<<Shplonk<F, CS> as PCS<F>>::Params as PcsParams>::CommitterKey,
+        ck: &<CS::Params as PcsParams>::CommitterKey,
         fss: &[Vec<Poly<F>>], // vecs of polynomials to combine
         ts: &[usize], // lengths of each combination
         // TODO: ts can be inferred from li := len(fss[i]) as ti = min(x : x >= li and x | p-1)
@@ -66,7 +66,7 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
     }
 
     pub fn verify<T: ShplonkTranscript<F, CS::G>>(
-        vk: &<<Shplonk<F, CS> as PCS<F>>::Params as PcsParams>::VerifierKey,
+        vk: &<CS::Params as PcsParams>::VerifierKey,
         gcs: &[CS::G],
         ts: &[usize],
         proof: (CS::G, CS::Proof),
@@ -86,7 +86,7 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
     }
 
     pub fn open_single<T: ShplonkTranscript<F, CS::G>>(
-        ck: &<<Shplonk<F, CS> as PCS<F>>::Params as PcsParams>::CommitterKey,
+        ck: &<CS::Params as PcsParams>::CommitterKey,
         fs: &[Poly<F>], // polynomials to combine
         t: usize, // lengths of the combination
         roots: &[F], // set of opening points presented as t-th roots
@@ -97,7 +97,7 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
     }
 
     pub fn verify_single<T: ShplonkTranscript<F, CS::G>>(
-        vk: &<<Shplonk<F, CS> as PCS<F>>::Params as PcsParams>::VerifierKey,
+        vk: &<CS::Params as PcsParams>::VerifierKey,
         gc: &CS::G,
         t: usize,
         proof: (CS::G, CS::Proof),

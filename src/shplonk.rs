@@ -11,7 +11,6 @@ use crate::pcs::{PCS, CommitmentSpace, PcsParams};
 
 use std::marker::PhantomData;
 use crate::Poly;
-use ark_std::rand::Rng;
 
 
 pub trait ShplonkTranscript<F, G> {
@@ -26,35 +25,35 @@ pub struct Shplonk<F: PrimeField, CS: PCS<F>> {
     _pcs: PhantomData<CS>,
 }
 
-impl<F: PrimeField, CS: PCS<F>> PCS<F> for Shplonk<F, CS> {
-    type G = CS::G;
-    type Params = CS::Params;
-    type Proof = CS::Proof;
-
-    fn setup<R: Rng>(max_degree: usize, rng: &mut R) -> Self::Params {
-        CS::setup(max_degree, rng)
-    }
-
-    fn commit(ck: &<Self::Params as PcsParams>::CommitterKey, p: &Poly<F>) -> Self::G {
-        CS::commit(ck, p)
-    }
-
-    fn open(ck: &<Self::Params as PcsParams>::CommitterKey, p: &Poly<F>, x: F) -> Self::Proof {
-        CS::open(ck, p, x)
-    }
-
-    fn verify(vk: &<Self::Params as PcsParams>::VerifierKey, c: &Self::G, x: F, z: F, proof: Self::Proof) -> bool {
-        CS::verify(vk, c, x, z, proof)
-    }
-
-    fn commit_to_one(vk: &<Self::Params as PcsParams>::VerifierKey) -> Self::G {
-        CS::commit_to_one(vk)
-    }
-}
+// impl<F: PrimeField, CS: PCS<F>> PCS<F> for Shplonk<F, CS> {
+//     type G = CS::G;
+//     type Params = CS::Params;
+//     type Proof = CS::Proof;
+//
+//     fn setup<R: Rng>(max_degree: usize, rng: &mut R) -> Self::Params {
+//         CS::setup(max_degree, rng)
+//     }
+//
+//     fn commit(ck: &<Self::Params as PcsParams>::CommitterKey, p: &Poly<F>) -> Self::G {
+//         CS::commit(ck, p)
+//     }
+//
+//     fn open(ck: &<Self::Params as PcsParams>::CommitterKey, p: &Poly<F>, x: F) -> Self::Proof {
+//         CS::open(ck, p, x)
+//     }
+//
+//     fn verify(vk: &<Self::Params as PcsParams>::VerifierKey, c: &Self::G, x: F, z: F, proof: Self::Proof) -> bool {
+//         CS::verify(vk, c, x, z, proof)
+//     }
+//
+//     fn commit_to_one(vk: &<Self::Params as PcsParams>::VerifierKey) -> Self::G {
+//         CS::commit_to_one(vk)
+//     }
+// }
 
 impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
     pub fn open_many<T: ShplonkTranscript<F, CS::G>>(
-        ck: &<<Shplonk<F, CS> as PCS<F>>::Params as PcsParams>::CommitterKey,
+        ck: &<CS::Params as PcsParams>::CommitterKey,
         fs: &[Poly<F>],
         xss: &[HashSet<F>],
         transcript: &mut T,
@@ -227,7 +226,7 @@ mod tests {
 
     pub fn generate_test_data<R, F, CS>(
         rng: &mut R,
-        ck: &<<Shplonk<F, CS> as PCS<F>>::Params as PcsParams>::CommitterKey,
+        ck: &<CS::Params as PcsParams>::CommitterKey,
         d: usize, // degree of polynomials
         t: usize, // number of polynomials
         xss: &Vec<Vec<F>>, // vecs of opening points per polynomial
@@ -264,7 +263,7 @@ mod tests {
     fn _test_shplonk<F: PrimeField, CS: PCS<F>>() {
         let rng = &mut test_rng();
 
-        let params = Shplonk::<F, CS>::setup(123, rng);
+        let params = CS::setup(123, rng);
 
         let t = 4; // number of polynomials
         let max_m = 3; // maximal number of opening points per polynomial
