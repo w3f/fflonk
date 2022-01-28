@@ -156,23 +156,23 @@ pub(crate) mod tests {
         type Params = ();
         type Proof = ();
 
-        fn setup<R: Rng>(max_degree: usize, rng: &mut R) -> Self::Params {
+        fn setup<R: Rng>(_max_degree: usize, _rng: &mut R) -> Self::Params {
             ()
         }
 
-        fn commit(ck: &(), p: &Poly<F>) -> Self::G {
+        fn commit(_ck: &(), p: &Poly<F>) -> Self::G {
             WrappedPolynomial(p.clone())
         }
 
-        fn open(ck: &(), p: &Poly<F>, x: F) -> Self::Proof {
+        fn open(_ck: &(), _p: &Poly<F>, _x: F) -> Self::Proof {
             ()
         }
 
-        fn verify(pvk: &(), c: &Self::G, x: F, z: F, proof: Self::Proof) -> bool {
+        fn verify(_pvk: &(), c: &Self::G, x: F, z: F, _proof: Self::Proof) -> bool {
             c.evaluate(&x) == z
         }
 
-        fn commit_to_one(pvk: &()) -> Self::G {
+        fn commit_to_one(_pvk: &()) -> Self::G {
             WrappedPolynomial(Poly::from_coefficients_slice(&[F::one()]))
         }
     }

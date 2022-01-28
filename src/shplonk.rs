@@ -209,7 +209,7 @@ mod tests {
     use super::*;
     use crate::pcs::tests::IdentityCommitment;
 
-    use ark_std::{test_rng, UniformRand};
+    use ark_std::test_rng;
     use ark_std::iter::FromIterator;
     use ark_std::rand::Rng;
     use crate::Poly;

@@ -114,7 +114,7 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ark_std::{test_rng, UniformRand};
+    use ark_std::test_rng;
     use ark_std::rand::Rng;
 
     use ark_poly::{UVPolynomial, Polynomial};
