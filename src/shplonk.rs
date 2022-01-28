@@ -215,6 +215,7 @@ mod tests {
     use ark_std::rand::Rng;
     use crate::Poly;
     use ark_bw6_761::{BW6_761, Fr};
+    use crate::pcs::kzg::KZG;
 
 
     impl<F: PrimeField, G> ShplonkTranscript<F, G> for (F, F) {
@@ -295,5 +296,10 @@ mod tests {
     #[test]
     fn test_shplonk_id() {
         _test_shplonk::<Fr, IdentityCommitment>();
+    }
+
+    #[test]
+    fn test_shplonk_kzg() {
+        _test_shplonk::<Fr, KZG<BW6_761>>();
     }
 }

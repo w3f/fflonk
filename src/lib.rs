@@ -121,6 +121,7 @@ mod tests {
 
     use crate::pcs::tests::IdentityCommitment;
     use ark_bw6_761::{BW6_761, Fr};
+    use crate::pcs::kzg::KZG;
 
     fn generate_test_data<R, F>(
         rng: &mut R,
@@ -216,7 +217,17 @@ mod tests {
     }
 
     #[test]
+    fn test_fflonk_single_kzg() {
+        _test_fflonk_single::<Fr, KZG<BW6_761>>();
+    }
+
+    #[test]
     fn test_fflonk_id() {
         _test_fflonk::<Fr, IdentityCommitment>();
+    }
+
+    #[test]
+    fn test_fflonk_kzg() {
+        _test_fflonk::<Fr, KZG<BW6_761>>();
     }
 }
