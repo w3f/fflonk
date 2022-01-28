@@ -1,3 +1,5 @@
+pub mod kzg;
+
 use ark_ff::PrimeField;
 
 use ark_std::iter::Sum;
