@@ -77,26 +77,27 @@ mod tests {
     use ark_std::test_rng;
     use ark_ec::AffineCurve;
 
-    fn _bench_urs_generation<E: PairingEngine>() {
-        let log_num_bases = 16;
-        let num_bases = 1 << log_num_bases;
-        let t_generate = start_timer!(|| format!("Generate 2^{} G1 and 2^{} G2 bases for {}", log_num_bases, log_num_bases, std::any::type_name::<E>()));
-        URS::<E>::generate(num_bases, num_bases, &mut test_rng());
+    fn _test_urs_generation<E: PairingEngine>(log_n1: usize, log_n2: usize) {
+        let n1 = 1 << log_n1;
+        let n2 = 1 << log_n2;
+
+        let t_generate = start_timer!(|| format!("Generate 2^{} G1 and 2^{} G2 bases for {}", log_n1, log_n2, std::any::type_name::<E>()));
+        let urs = URS::<E>::generate(n1, n2, &mut test_rng());
         end_timer!(t_generate);
+
+        assert_eq!(urs.powers_in_g1.len(), n1);
+        assert_eq!(urs.powers_in_g2.len(), n2);
     }
 
     #[test]
+    #[ignore]
     fn bench_urs_generation() {
-        _bench_urs_generation::<BW6_761>();
+        _test_urs_generation::<BW6_761>(16, 16);
     }
 
     #[test]
     fn test_urs_generation() {
-        let n1 = 1 << 8;
-        let n2 = 2;
-        let urs = URS::<BW6_761>::generate(n1, n2, &mut test_rng());
-        assert_eq!(urs.powers_in_g1.len(), n1);
-        assert_eq!(urs.powers_in_g2.len(), n2);
+        _test_urs_generation::<BW6_761>(8, 1);
     }
 
     #[test]

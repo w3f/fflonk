@@ -123,10 +123,11 @@ mod tests {
 
     #[test]
     fn test_minimal_kzg() {
-        _test_minimal_kzg::<BW6_761>(10);
+        _test_minimal_kzg::<BW6_761>(8);
     }
 
     #[test]
+    #[ignore]
     fn bench_minimal_kzg() {
         _test_minimal_kzg::<BW6_761>(16);
     }
