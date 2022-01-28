@@ -97,7 +97,7 @@ mod tests {
         let rng = &mut test_rng();
 
         let t_setup = start_timer!(|| format!("KZG setup of size 2^{} on {}", log_n, std::any::type_name::<E>()));
-        let max_degree = 1 << log_n - 1;
+        let max_degree = (1 << log_n) - 1;
         let urs = KZG::<E>::setup(max_degree, rng);
         end_timer!(t_setup);
 

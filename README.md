@@ -27,4 +27,10 @@ Notice that this type of aggregation is different from [aggregation for vector c
    * opening single polynomial in multiple points non-interactively, [original KZG paper](https://cacr.uwaterloo.ca/techreports/2010/cacr2010-10.pdf), Batch Opening
    * Halo-style accumulation of openings, at least for verifier-side batch verification 
 3. Shplonk scheme #1, may be with proof (cross-)aggregation
-4. Adding hiding 
+4. Adding hiding
+
+#### Benchamrks
+```
+cargo test bench_minimal_kzg --release --features "print-trace" -- --nocapture --ignored
+```
+outputs timings for generating a setup, committing to a 2^16-degree,  proving and verifying an opening in a single point. 
