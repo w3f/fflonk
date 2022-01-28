@@ -39,7 +39,7 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
     }
 
     pub fn open<T: ShplonkTranscript<F, CS::G>>(
-        ck: &<CS::Params as PcsParams>::CommitterKey,
+        ck: &<CS::Params as PcsParams>::CK,
         fss: &[Vec<Poly<F>>], // vecs of polynomials to combine
         ts: &[usize], // lengths of each combination
         // TODO: ts can be inferred from li := len(fss[i]) as ti = min(x : x >= li and x | p-1)
@@ -66,7 +66,7 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
     }
 
     pub fn verify<T: ShplonkTranscript<F, CS::G>>(
-        vk: &<CS::Params as PcsParams>::VerifierKey,
+        vk: &<CS::Params as PcsParams>::VK,
         gcs: &[CS::G],
         ts: &[usize],
         proof: (CS::G, CS::Proof),
@@ -86,7 +86,7 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
     }
 
     pub fn open_single<T: ShplonkTranscript<F, CS::G>>(
-        ck: &<CS::Params as PcsParams>::CommitterKey,
+        ck: &<CS::Params as PcsParams>::CK,
         fs: &[Poly<F>], // polynomials to combine
         t: usize, // lengths of the combination
         roots: &[F], // set of opening points presented as t-th roots
@@ -97,7 +97,7 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
     }
 
     pub fn verify_single<T: ShplonkTranscript<F, CS::G>>(
-        vk: &<CS::Params as PcsParams>::VerifierKey,
+        vk: &<CS::Params as PcsParams>::VK,
         gc: &CS::G,
         t: usize,
         proof: (CS::G, CS::Proof),
@@ -176,7 +176,7 @@ mod tests {
         let gc = CS::commit(&params.ck(), &g);
 
         let proof = FflonkyKzg::<F, CS>::open_single(&params.ck(), &fs, t, &roots, transcript);
-        assert!(FflonkyKzg::<F, CS>::verify_single(&params.rk(), &gc, t, proof, &roots, &vss, transcript));
+        assert!(FflonkyKzg::<F, CS>::verify_single(&params.vk(), &gc, t, proof, &roots, &vss, transcript));
     }
 
     fn _test_fflonk<F: PrimeField, CS: PCS<F>>() {
@@ -208,7 +208,7 @@ mod tests {
             .collect();
 
         let proof = FflonkyKzg::<F, CS>::open(&params.ck(), &fss, &ts, &rootss, transcript);
-        assert!(FflonkyKzg::<F, CS>::verify(&params.rk(), &gcs, &ts, proof, &rootss, &vsss, transcript));
+        assert!(FflonkyKzg::<F, CS>::verify(&params.vk(), &gcs, &ts, proof, &rootss, &vsss, transcript));
     }
 
     #[test]

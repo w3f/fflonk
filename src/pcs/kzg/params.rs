@@ -21,16 +21,16 @@ impl<E: PairingEngine> URS<E> {
 }
 
 impl<E: PairingEngine> PcsParams for URS<E> {
-    type CommitterKey = KzgCommitterKey<E::G1Affine>;
-    type VerifierKey = KzgVerifierKey<E>;
+    type CK = KzgCommitterKey<E::G1Affine>;
+    type VK = KzgVerifierKey<E>;
 
-    fn ck(&self) -> Self::CommitterKey {
+    fn ck(&self) -> Self::CK {
         KzgCommitterKey {
             powers_in_g1: self.powers_in_g1.clone() //TODO: Cow?
         }
     }
 
-    fn rk(&self) -> Self::VerifierKey {
+    fn vk(&self) -> Self::VK {
         self.raw_rk().prepare()
     }
 }

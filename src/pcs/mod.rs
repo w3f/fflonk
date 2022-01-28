@@ -44,10 +44,10 @@ pub trait VerifierKey: Clone + Debug {
 
 
 pub trait PcsParams {
-    type CommitterKey: CommitterKey;
-    type VerifierKey: VerifierKey;
-    fn ck(&self) -> Self::CommitterKey; //TODO: trim
-    fn rk(&self) -> Self::VerifierKey;
+    type CK: CommitterKey;
+    type VK: VerifierKey;
+    fn ck(&self) -> Self::CK; //TODO: trim
+    fn vk(&self) -> Self::VK;
 }
 
 
@@ -59,14 +59,14 @@ pub trait PCS<F: PrimeField> {
 
     fn setup<R: Rng>(max_degree: usize, rng: &mut R) -> Self::Params;
 
-    fn commit(ck: &<Self::Params as PcsParams>::CommitterKey, p: &Poly<F>) -> Self::G;
+    fn commit(ck: &<Self::Params as PcsParams>::CK, p: &Poly<F>) -> Self::G;
 
-    fn open(ck: &<Self::Params as PcsParams>::CommitterKey, p: &Poly<F>, x: F) -> Self::Proof; //TODO: eval?
+    fn open(ck: &<Self::Params as PcsParams>::CK, p: &Poly<F>, x: F) -> Self::Proof; //TODO: eval?
 
-    fn verify(pvk: &<Self::Params as PcsParams>::VerifierKey, c: &Self::G, x: F, z: F, proof: Self::Proof) -> bool;
+    fn verify(vk: &<Self::Params as PcsParams>::VK, c: &Self::G, x: F, z: F, proof: Self::Proof) -> bool;
 
     /// Commit to degree-0 polynomials (see shplonk scheme #2 ot Halo infinite 4.2).
-    fn commit_to_one(pvk: &<Self::Params as PcsParams>::VerifierKey) -> Self::G;
+    fn commit_to_one(pvk: &<Self::Params as PcsParams>::VK) -> Self::G;
 }
 
 
@@ -136,14 +136,14 @@ pub(crate) mod tests {
 
 
     impl PcsParams for () {
-        type CommitterKey = ();
-        type VerifierKey = ();
+        type CK = ();
+        type VK = ();
 
-        fn ck(&self) -> Self::CommitterKey {
+        fn ck(&self) -> Self::CK {
             ()
         }
 
-        fn rk(&self) -> Self::VerifierKey {
+        fn vk(&self) -> Self::VK {
             ()
         }
     }
@@ -168,7 +168,7 @@ pub(crate) mod tests {
             ()
         }
 
-        fn verify(_pvk: &(), c: &Self::G, x: F, z: F, _proof: Self::Proof) -> bool {
+        fn verify(_vk: &(), c: &Self::G, x: F, z: F, _proof: Self::Proof) -> bool {
             c.evaluate(&x) == z
         }
 

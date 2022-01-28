@@ -53,7 +53,7 @@ pub struct Shplonk<F: PrimeField, CS: PCS<F>> {
 
 impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
     pub fn open_many<T: ShplonkTranscript<F, CS::G>>(
-        ck: &<CS::Params as PcsParams>::CommitterKey,
+        ck: &<CS::Params as PcsParams>::CK,
         fs: &[Poly<F>],
         xss: &[HashSet<F>],
         transcript: &mut T,
@@ -154,7 +154,7 @@ impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
     }
 
     pub fn verify_many<T: ShplonkTranscript<F, CS::G>>(
-        vk: &<CS::Params as PcsParams>::VerifierKey,
+        vk: &<CS::Params as PcsParams>::VK,
         fcs: &[CS::G],
         proof: (CS::G, CS::Proof),
         xss: &Vec<Vec<F>>,
@@ -226,7 +226,7 @@ mod tests {
 
     pub fn generate_test_data<R, F, CS>(
         rng: &mut R,
-        ck: &<CS::Params as PcsParams>::CommitterKey,
+        ck: &<CS::Params as PcsParams>::CK,
         d: usize, // degree of polynomials
         t: usize, // number of polynomials
         xss: &Vec<Vec<F>>, // vecs of opening points per polynomial
@@ -284,7 +284,7 @@ mod tests {
 
         let (qc, qlc) = Shplonk::<F, CS>::open_many(&params.ck(), &fs, sets_of_xss.as_slice(), transcript);
 
-        assert!(Shplonk::<F, CS>::verify_many(&params.rk(), &fcs, (qc, qlc), &xss, &yss, transcript))
+        assert!(Shplonk::<F, CS>::verify_many(&params.vk(), &fcs, (qc, qlc), &xss, &yss, transcript))
     }
 
     #[test]
