@@ -21,6 +21,26 @@ pub struct KZG<E: PairingEngine> {
 }
 
 
+/// Represents a claim that f(z) = v, for some f such that CS::commit(f) = c.
+/// Notion of "some f" depends on the soundness properties of the commitment scheme.
+struct Claim<F: PrimeField, CS: PCS<F>> {
+    c: CS::G,
+    z: F,
+    v: F,
+}
+
+/// Represents an opening claim together with an alleged proof
+struct Opening<F: PrimeField, CS: PCS<F>> {
+    claim: Claim<F, CS>,
+    proof: CS::Proof,
+}
+
+struct PreparedOpening<F: PrimeField, CS: PCS<F>, E: PairingEngine> {
+    acc: E::G1Projective,
+    acc_proof: CS::Proof,
+}
+
+
 impl<E: PairingEngine> KZG<E> {
     fn z(x: E::Fr) -> Poly<E::Fr> {
         Poly::from_coefficients_slice(&[-x, E::Fr::one()])
@@ -34,8 +54,21 @@ impl<E: PairingEngine> KZG<E> {
         Self::q(p, &Self::z(x))
     }
 
-    fn opening(g1: &E::G1Affine, c: &E::G1Projective, x: E::Fr, z: E::Fr, proof: E::G1Affine) -> (E::G1Projective, E::G1Affine) {
-        (g1.mul(z) - c - proof.mul(x), proof)
+    fn prepare(opening: Opening<E::Fr, Self>, pvk: &<KZG<E> as PCS<E::Fr>>::VK) -> PreparedOpening<E::Fr, Self, E> {
+        let Opening { claim, proof } = opening;
+        let Claim { c, z, v } = claim;
+        let acc = pvk.g1.mul(v) - c.0 - proof.mul(z);
+        PreparedOpening {
+            acc,
+            acc_proof: proof
+        }
+    }
+
+    fn verify_prepared(opening: PreparedOpening<E::Fr, Self, E>, pvk: &<KZG<E> as PCS<E::Fr>>::VK) -> bool {
+        E::product_of_pairings(&[
+            (opening.acc.into_affine().into(), pvk.g2.clone()),
+            (opening.acc_proof.into(), pvk.tau_in_g2.clone()),
+        ]).is_one()
     }
 }
 
@@ -46,6 +79,7 @@ impl<E: PairingEngine> PCS<E::Fr> for KZG<E> {
     type VK = KzgVerifierKey<E>;
     type CK = KzgCommitterKey<E::G1Affine>;
     type Params = URS<E>;
+
 
     fn setup<R: Rng>(max_degree: usize, rng: &mut R) -> Self::Params {
         URS::<E>::generate(max_degree + 1, 2, rng)
@@ -69,12 +103,11 @@ impl<E: PairingEngine> PCS<E::Fr> for KZG<E> {
         Self::commit(ck, &q).0.into_affine()
     }
 
-    fn verify(vk: &KzgVerifierKey<E>, c: Self::G, x: E::Fr, z: E::Fr, proof: Self::Proof) -> bool {
-        let (agg, proof) = Self::opening(&vk.g1, &c.0, x, z, proof);
-        E::product_of_pairings(&[
-            (agg.into_affine().into(), vk.g2.clone()),
-            (proof.into(), vk.tau_in_g2.clone()),
-        ]).is_one()
+    fn verify(vk: &KzgVerifierKey<E>, c: Self::G, z: E::Fr, v: E::Fr, proof: Self::Proof) -> bool {
+        let claim = Claim{ c, z, v };
+        let opening = Opening {claim, proof};
+        let prepared = Self::prepare(opening, vk);
+        Self::verify_prepared(prepared, vk)
     }
 }
 
