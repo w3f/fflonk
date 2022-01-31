@@ -84,6 +84,7 @@ mod tests {
     use ark_bw6_761::BW6_761;
     use ark_std::test_rng;
     use crate::pcs::PcsParams;
+    use crate::utils::curve_name;
     use ark_poly::UVPolynomial;
     use ark_ff::UniformRand;
 
@@ -92,7 +93,7 @@ mod tests {
     fn _test_minimal_kzg<E: PairingEngine>(log_n: usize) {
         let rng = &mut test_rng();
 
-        let t_setup = start_timer!(|| format!("KZG setup of size 2^{} on {}", log_n, std::any::type_name::<E>()));
+        let t_setup = start_timer!(|| format!("KZG setup of size 2^{} on {}", log_n, curve_name::<E>()));
         let max_degree = (1 << log_n) - 1;
         let urs = KZG::<E>::setup(max_degree, rng);
         end_timer!(t_setup);

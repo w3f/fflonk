@@ -1,6 +1,7 @@
 use ark_ff::{FftField, Field};
 use ark_poly::{Polynomial, UVPolynomial};
 use ark_poly::univariate::DensePolynomial;
+use ark_ec::PairingEngine;
 
 /// (max_exp+1)-sized vec: 1, base, base^2,... ,base^{max_exp}
 pub fn powers<F: Field>(base: F, max_exp: usize) -> Vec<F> {
@@ -47,4 +48,12 @@ pub fn z_of_set<'a, F: FftField>(xs: impl IntoIterator<Item=&'a F>) -> DensePoly
         .map(|xi| z_of_point(xi))
         .reduce(|p, pi| &p * &pi)
         .unwrap()
+}
+
+#[cfg(test)]
+pub fn curve_name<E: PairingEngine>() -> &'static str {
+    // ark_ec::models::bw6::BW6<ark_bw6_761::curves::Parameters>
+    let full_name = std::any::type_name::<E>();
+    full_name.split_once("<").unwrap().1
+        .split_once(":").unwrap().0
 }

@@ -75,12 +75,13 @@ mod tests {
     use super::*;
     use ark_bw6_761::{BW6_761};
     use ark_std::test_rng;
+    use crate::utils::curve_name;
 
     fn _test_urs_generation<E: PairingEngine>(log_n1: usize, log_n2: usize) {
         let n1 = 1 << log_n1;
         let n2 = 1 << log_n2;
 
-        let t_generate = start_timer!(|| format!("Generate 2^{} G1 and 2^{} G2 bases for {}", log_n1, log_n2, std::any::type_name::<E>()));
+        let t_generate = start_timer!(|| format!("Generate 2^{} G1 and 2^{} G2 bases for {}", log_n1, log_n2, curve_name::<E>()));
         let urs = URS::<E>::generate(n1, n2, &mut test_rng());
         end_timer!(t_generate);
 
