@@ -65,7 +65,7 @@ pub trait PCS<F: PrimeField> {
 
     fn open(ck: &Self::CK, p: &Poly<F>, x: F) -> Self::Proof; //TODO: eval?
 
-    fn verify(vk: &Self::VK, c: &Self::G, x: F, z: F, proof: Self::Proof) -> bool;
+    fn verify(vk: &Self::VK, c: Self::G, x: F, z: F, proof: Self::Proof) -> bool;
 }
 
 
@@ -165,7 +165,7 @@ pub(crate) mod tests {
             ()
         }
 
-        fn verify(_vk: &(), c: &Self::G, x: F, z: F, _proof: Self::Proof) -> bool {
+        fn verify(_vk: &(), c: Self::G, x: F, z: F, _proof: Self::Proof) -> bool {
             c.evaluate(&x) == z
         }
     }

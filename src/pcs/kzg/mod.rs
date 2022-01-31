@@ -69,7 +69,7 @@ impl<E: PairingEngine> PCS<E::Fr> for KZG<E> {
         Self::commit(ck, &q).0.into_affine()
     }
 
-    fn verify(vk: &KzgVerifierKey<E>, c: &Self::G, x: E::Fr, z: E::Fr, proof: Self::Proof) -> bool {
+    fn verify(vk: &KzgVerifierKey<E>, c: Self::G, x: E::Fr, z: E::Fr, proof: Self::Proof) -> bool {
         let (agg, proof) = Self::opening(&vk.g1, &c.0, x, z, proof);
         E::product_of_pairings(&[
             (agg.into_affine().into(), vk.g2.clone()),
@@ -114,7 +114,7 @@ mod tests {
         end_timer!(t_prove);
 
         let t_verify = start_timer!(|| "Verification of a single-point opening");
-        assert!(KZG::<E>::verify(&vk, &c, x, z, proof));
+        assert!(KZG::<E>::verify(&vk, c, x, z, proof));
         end_timer!(t_verify);
     }
 
