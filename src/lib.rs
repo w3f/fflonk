@@ -9,7 +9,7 @@ use ark_std::rand::Rng;
 pub mod shplonk;
 pub mod fflonk;
 pub mod pcs;
-mod utils;
+pub mod utils;
 
 
 type Poly<F> = DensePolynomial<F>; // currently SparsePolynomial doesn't implement UVPolynomial anyway

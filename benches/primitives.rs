@@ -1,11 +1,12 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion, BenchmarkId};
 
 use ark_ff::UniformRand;
 use ark_std::test_rng;
 
 use ark_ff::PrimeField;
 use ark_ec::{PairingEngine, ProjectiveCurve, AffineCurve};
-use ark_bw6_761::{BW6_761};
+use ark_bw6_761::BW6_761;
+use fflonk::utils;
 
 
 fn scalar_mul<E: PairingEngine>(c: &mut Criterion) {
@@ -64,6 +65,46 @@ fn additions<E: PairingEngine>(c: &mut Criterion) {
     c.bench_function("add mixed", |b| b.iter(|| a_projective.add_mixed(&b_affine)));
 }
 
+fn short_mul<E: PairingEngine>(c: &mut Criterion) {
+    let rng = &mut test_rng();
+    let projective = E::G1Projective::rand(rng);
+    let affine = E::G1Affine::rand(rng);
+    let exp: E::Fr = u128::rand(rng).into();
+    c.bench_function("128-bit projective", |b| b.iter(|| projective.mul(exp.into_repr())));
+    c.bench_function("128-bit affine", |b| b.iter(|| affine.mul(exp)));
+}
 
-criterion_group!(benches, scalar_mul::<BW6_761>, coordinates_conversion::<BW6_761>, additions::<BW6_761>);
+fn small_multiexp<E: PairingEngine>(c: &mut Criterion) {
+    let rng = &mut test_rng();
+    let n = 10;
+
+    let bases = (0..n).map(|_| E::G1Affine::rand(rng)).collect::<Vec<_>>();
+    let exps_full = (0..n).map(|_| E::Fr::rand(rng)).collect::<Vec<_>>();
+    let exps_128 = (0..n).map(|_| E::Fr::from(u128::rand(rng))).collect::<Vec<_>>();
+
+    let mut group = c.benchmark_group("msm");
+    group.bench_with_input(BenchmarkId::new("small-multiexp-full", n), &n, |b, _n| {
+        b.iter(|| utils::small_multiexp(&exps_full, &bases))
+    });
+    group.bench_with_input(BenchmarkId::new("naive-multiexp-full", n), &n, |b, _n| {
+        b.iter(|| utils::naive_multiexp(&exps_full, &bases))
+    });
+    group.bench_with_input(BenchmarkId::new("small-multiexp-128", n), &n, |b, _n| {
+        b.iter(|| utils::small_multiexp(&exps_128, &bases))
+    });
+    group.bench_with_input(BenchmarkId::new("naive-multiexp-128", n), &n, |b, _n| {
+        b.iter(|| utils::naive_multiexp(&exps_128, &bases))
+    });
+    group.finish();
+}
+
+
+criterion_group!(
+    benches,
+    scalar_mul::<BW6_761>,
+    short_mul::<BW6_761>,
+    coordinates_conversion::<BW6_761>,
+    additions::<BW6_761>,
+    small_multiexp::<BW6_761>
+);
 criterion_main!(benches);
