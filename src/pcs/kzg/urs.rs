@@ -75,7 +75,7 @@ mod tests {
     use super::*;
     use ark_bw6_761::{BW6_761};
     use ark_std::test_rng;
-    use crate::utils::curve_name;
+    use crate::utils::tests::curve_name;
 
     fn _test_urs_generation<E: PairingEngine>(log_n1: usize, log_n2: usize) {
         let n1 = 1 << log_n1;

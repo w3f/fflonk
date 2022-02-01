@@ -117,7 +117,7 @@ mod tests {
     use ark_bw6_761::BW6_761;
     use ark_std::test_rng;
     use crate::pcs::PcsParams;
-    use crate::utils::curve_name;
+    use crate::utils::tests::curve_name;
     use ark_poly::UVPolynomial;
     use ark_ff::UniformRand;
 
