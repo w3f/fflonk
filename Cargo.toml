@@ -15,8 +15,7 @@ merlin = "3.0"
 
 [dev-dependencies]
 criterion = "0.3"
-ark-bw6-761 = { version = "0.3", default-features = false }
-ark-bls12-381 = { version = "0.3", default-features = false, features = ["curve"] }
+ark-bw6-761 = { git = "https://github.com/arkworks-rs/curves", version = "0.3", default-features = false }
 
 [[bench]]
 name = "primitives"
@@ -30,8 +29,7 @@ print-trace = ["ark-std/print-trace"]
 
 [patch.crates-io]
 ark-std = { git = "https://github.com/arkworks-rs/std" }
-ark-ff = { git = "https://github.com/arkworks-rs/algebra" }
-ark-ec = { git = "https://github.com/arkworks-rs/algebra" }
-ark-serialize = { git = "https://github.com/arkworks-rs/algebra" }
-ark-bw6-761 = { git = "https://github.com/arkworks-rs/curves" }
-ark-bls12-381 = { git = "https://github.com/arkworks-rs/curves" }
+ark-ff = { git = "https://github.com/arkworks-rs/algebra", rev = "d6365c3" }
+ark-ec = { git = "https://github.com/arkworks-rs/algebra", rev = "d6365c3" }
+ark-poly = { git = "https://github.com/arkworks-rs/algebra", rev = "d6365c3" }
+ark-serialize = { git = "https://github.com/arkworks-rs/algebra", rev = "d6365c3" }
