@@ -19,12 +19,12 @@ pub trait Transcript<F, G> {
 }
 
 
-pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::G>>(
+pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
     ck: &CS::CK,
     fs: &[Poly<F>],
     xss: &[HashSet<F>],
     transcript: &mut T,
-) -> (Poly<F>, F, CS::G) {
+) -> (Poly<F>, F, CS::C) {
     assert_eq!(xss.len(), fs.len(), "{} opening sets specified for {} polynomials", xss.len(), fs.len());
     let mut opening_set = HashSet::new();
     for xs in xss {
@@ -76,12 +76,12 @@ pub fn group_by_commitment<F: PrimeField, C: CommitmentSpace<F>>(
         .collect()
 }
 
-pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::G>>(
-    claims: Vec<MultipointClaim<F, CS::G>>,
-    qc: &CS::G,
-    onec: &CS::G,
+pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
+    claims: Vec<MultipointClaim<F, CS::C>>,
+    qc: &CS::C,
+    onec: &CS::C,
     transcript: &mut T,
-) -> MultipointClaim<F, CS::G>
+) -> MultipointClaim<F, CS::C>
 {
     let gamma = transcript.get_gamma();
     transcript.commit_to_q(&qc);
@@ -115,7 +115,7 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::G>>(
     let gzs: Vec<F> = gs.iter().zip(zs_at_zeta.iter()).map(|(&gi, zi_inv)| gi * zi_inv).collect();
     assert_eq!(claims.len(), gzs.len());
 
-    let fc: CS::G = claims.iter().zip(gzs.iter())
+    let fc: CS::C = claims.iter().zip(gzs.iter())
         .map(|(claim, &gzi)| claim.c.mul(z_at_zeta * gzi))
         .sum();
 

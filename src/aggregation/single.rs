@@ -14,7 +14,7 @@ pub struct Claim<F: PrimeField, C: CommitmentSpace<F>> {
 }
 
 impl<F: PrimeField, C: CommitmentSpace<F>> Claim<F, C> {
-    fn new<CS>(ck: &CS::CK, poly: &Poly<F>, at: F) -> Claim<F, C> where CS: PCS<F, G = C> {
+    fn new<CS>(ck: &CS::CK, poly: &Poly<F>, at: F) -> Claim<F, C> where CS: PCS<F, C= C> {
         Claim {
             c: CS::commit(ck, poly),
             x: at,
@@ -32,7 +32,7 @@ impl<F: PrimeField, C: CommitmentSpace<F>> Claim<F, C> {
 ///
 /// If CS is knowledge-sound than an aggregate opening is a proof of knowledge for
 /// `{[(C_i, x, y_i)]; [f_i]): fi(x) = yi and CS::commit(fi) = ci}`.
-pub fn aggregate_claims<F: PrimeField, CS: PCS<F>>(claims: &[Claim<F, CS::G>], rs: &[F]) -> Claim<F, CS::G> {
+pub fn aggregate_claims<F: PrimeField, CS: PCS<F>>(claims: &[Claim<F, CS::C>], rs: &[F]) -> Claim<F, CS::C> {
     assert_eq!(claims.len(), rs.len());
 
     let mut iter_over_xs = claims.iter().map(|cl| cl.x);
@@ -44,7 +44,7 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>>(claims: &[Claim<F, CS::G>], r
     // If y1 = y2 = f(x) both claims are valid
     // If y1 != y2, at least one of the 2 claims is invalid
 
-    let (rcs, rys): (Vec<CS::G>, Vec<F>) = claims.iter().zip(rs.iter())
+    let (rcs, rys): (Vec<CS::C>, Vec<F>) = claims.iter().zip(rs.iter())
         .map(|(cl, &r)| (cl.c.mul(r), r * cl.y))
         .unzip();
 

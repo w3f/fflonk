@@ -51,7 +51,7 @@ pub trait PcsParams<CK, VK> {
 
 /// Polynomial commitment scheme.
 pub trait PCS<F: PrimeField> {
-    type G: CommitmentSpace<F>;
+    type C: CommitmentSpace<F>;
 
     type Proof;
 
@@ -61,11 +61,11 @@ pub trait PCS<F: PrimeField> {
 
     fn setup<R: Rng>(max_degree: usize, rng: &mut R) -> Self::Params;
 
-    fn commit(ck: &Self::CK, p: &Poly<F>) -> Self::G;
+    fn commit(ck: &Self::CK, p: &Poly<F>) -> Self::C;
 
     fn open(ck: &Self::CK, p: &Poly<F>, x: F) -> Self::Proof; //TODO: eval?
 
-    fn verify(vk: &Self::VK, c: Self::G, x: F, z: F, proof: Self::Proof) -> bool;
+    fn verify(vk: &Self::VK, c: Self::C, x: F, z: F, proof: Self::Proof) -> bool;
 }
 
 
@@ -147,7 +147,7 @@ pub(crate) mod tests {
     pub struct IdentityCommitment {}
 
     impl<F: PrimeField> PCS<F> for IdentityCommitment {
-        type G = WrappedPolynomial<F>;
+        type C = WrappedPolynomial<F>;
         type Params = ();
         type Proof = ();
         type CK = ();
@@ -157,7 +157,7 @@ pub(crate) mod tests {
             ()
         }
 
-        fn commit(_ck: &(), p: &Poly<F>) -> Self::G {
+        fn commit(_ck: &(), p: &Poly<F>) -> Self::C {
             WrappedPolynomial(p.clone())
         }
 
@@ -165,7 +165,7 @@ pub(crate) mod tests {
             ()
         }
 
-        fn verify(_vk: &(), c: Self::G, x: F, z: F, _proof: Self::Proof) -> bool {
+        fn verify(_vk: &(), c: Self::C, x: F, z: F, _proof: Self::Proof) -> bool {
             c.evaluate(&x) == z
         }
     }

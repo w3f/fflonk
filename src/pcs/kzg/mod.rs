@@ -40,7 +40,7 @@ impl<E: PairingEngine> KZG<E> {
 }
 
 impl<E: PairingEngine> PCS<E::Fr> for KZG<E> {
-    type G = KzgCommitment<E>;
+    type C = KzgCommitment<E>;
     type Proof = E::G1Affine;
 
     type VK = KzgVerifierKey<E>;
@@ -52,7 +52,7 @@ impl<E: PairingEngine> PCS<E::Fr> for KZG<E> {
     }
 
 
-    fn commit(ck: &KzgCommitterKey<E::G1Affine>, p: &Poly<E::Fr>) -> Self::G {
+    fn commit(ck: &KzgCommitterKey<E::G1Affine>, p: &Poly<E::Fr>) -> Self::C {
         assert!(p.degree() <= ck.max_degree(), "Can't commit to degree {} polynomial using {} bases", p.degree(), ck.powers_in_g1.len());
 
         let coeffs = p.coeffs.iter().map(|c| c.into_repr()).collect::<Vec<_>>();
@@ -69,7 +69,7 @@ impl<E: PairingEngine> PCS<E::Fr> for KZG<E> {
         Self::commit(ck, &q).0.into_affine()
     }
 
-    fn verify(vk: &KzgVerifierKey<E>, c: Self::G, x: E::Fr, z: E::Fr, proof: Self::Proof) -> bool {
+    fn verify(vk: &KzgVerifierKey<E>, c: Self::C, x: E::Fr, z: E::Fr, proof: Self::Proof) -> bool {
         let (agg, proof) = Self::opening(&vk.g1, &c.0, x, z, proof);
         E::product_of_pairings(&[
             (agg.into_affine().into(), vk.g2.clone()),

@@ -14,12 +14,12 @@ pub struct Shplonk<F: PrimeField, CS: PCS<F>> {
 }
 
 impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
-    pub fn open_many<T: Transcript<F, CS::G>>(
+    pub fn open_many<T: Transcript<F, CS::C>>(
         ck: &CS::CK,
         fs: &[Poly<F>],
         xss: &[HashSet<F>],
         transcript: &mut T,
-    ) -> (CS::G, CS::Proof)
+    ) -> (CS::C, CS::Proof)
     {
         let (agg_poly, zeta, agg_proof) = aggregate_polys::<F, CS, T>(ck, fs, xss, transcript);
         assert!(agg_poly.evaluate(&zeta).is_zero());
@@ -27,10 +27,10 @@ impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
         (agg_proof, opening_proof)
     }
 
-    pub fn verify_many<T: Transcript<F, CS::G>>(
+    pub fn verify_many<T: Transcript<F, CS::C>>(
         vk: &CS::VK,
-        fcs: &[CS::G],
-        proof: (CS::G, CS::Proof),
+        fcs: &[CS::C],
+        proof: (CS::C, CS::Proof),
         xss: &Vec<Vec<F>>,
         yss: &Vec<Vec<F>>,
         transcript: &mut T,
@@ -83,7 +83,7 @@ pub mod tests {
         d: usize, // degree of polynomials
         t: usize, // number of polynomials
         xss: Vec<Vec<F>>, // vecs of opening points per polynomial
-    ) -> TestOpening<F, CS::G> where
+    ) -> TestOpening<F, CS::C> where
         R: Rng,
         F: PrimeField,
         CS: PCS<F>,

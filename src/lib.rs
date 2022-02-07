@@ -43,14 +43,14 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
         CS::setup(max_degree, rng)
     }
 
-    pub fn open<T: Transcript<F, CS::G>>(
+    pub fn open<T: Transcript<F, CS::C>>(
         ck: &CS::CK,
         fss: &[Vec<Poly<F>>], // vecs of polynomials to combine
         ts: &[usize], // lengths of each combination
         // TODO: ts can be inferred from li := len(fss[i]) as ti = min(x : x >= li and x | p-1)
         rootss: &[Vec<F>], // sets of opening points per a combined polynomial presented as t-th roots
         transcript: &mut T,
-    ) -> (CS::G, CS::Proof)
+    ) -> (CS::C, CS::Proof)
     {
         let k = fss.len();
         assert_eq!(k, ts.len());
@@ -70,11 +70,11 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
         Shplonk::<F, CS>::open_many(ck, &gs, &xss, transcript)
     }
 
-    pub fn verify<T: Transcript<F, CS::G>>(
+    pub fn verify<T: Transcript<F, CS::C>>(
         vk: &CS::VK,
-        gcs: &[CS::G],
+        gcs: &[CS::C],
         ts: &[usize],
-        proof: (CS::G, CS::Proof),
+        proof: (CS::C, CS::Proof),
         rootss: &[Vec<F>],
         vss: &[Vec<Vec<F>>],
         transcript: &mut T,
@@ -90,22 +90,22 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
         Shplonk::<F, CS>::verify_many(vk, &gcs, proof, &xss, &yss, transcript)
     }
 
-    pub fn open_single<T: Transcript<F, CS::G>>(
+    pub fn open_single<T: Transcript<F, CS::C>>(
         ck: &CS::CK,
         fs: &[Poly<F>], // polynomials to combine
         t: usize, // lengths of the combination
         roots: &[F], // set of opening points presented as t-th roots
         transcript: &mut T,
-    ) -> (CS::G, CS::Proof)
+    ) -> (CS::C, CS::Proof)
     {
         Self::open(ck, &[fs.to_vec()], &[t], &[roots.to_vec()], transcript)
     }
 
-    pub fn verify_single<T: Transcript<F, CS::G>>(
+    pub fn verify_single<T: Transcript<F, CS::C>>(
         vk: &CS::VK,
-        gc: &CS::G,
+        gc: &CS::C,
         t: usize,
-        proof: (CS::G, CS::Proof),
+        proof: (CS::C, CS::Proof),
         roots: &[F],
         vss: &[Vec<F>], // evaluations per point // TODO: shplonk provides API with evals per polynomial
         transcript: &mut T,
