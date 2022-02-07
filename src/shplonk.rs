@@ -65,7 +65,7 @@ mod tests {
     use ark_std::test_rng;
 
     use crate::pcs::kzg::KZG;
-    use crate::pcs::PcsParams;
+    use crate::pcs::{PcsParams, CommitmentSpace};
     use crate::pcs::tests::IdentityCommitment;
     use crate::Poly;
 
