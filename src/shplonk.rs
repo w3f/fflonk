@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 use ark_ff::PrimeField;
 use ark_poly::{Polynomial, UVPolynomial};
 
-use crate::pcs::aggregation::{aggregate_claims, aggregate_polys, Claim, Transcript};
+use crate::pcs::aggregation::{aggregate_claims, aggregate_polys, Claim, Transcript, group_by_commitment};
 use crate::pcs::PCS;
 use crate::Poly;
 
@@ -38,21 +38,9 @@ impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
     {
         let (agg_proof, opening_proof) = proof;
         let onec = CS::commit(&vk.clone().into(), &Poly::from_coefficients_slice(&[F::one()]));
-        let claims = Self::group_by_commitment(fcs, xss, yss);
+        let claims = group_by_commitment(fcs, xss, yss);
         let agg_claim = aggregate_claims::<F, CS, T>(claims, &agg_proof, &onec, transcript);
         CS::verify(vk, agg_claim.c, agg_claim.xs[0], agg_claim.ys[0], opening_proof)
-    }
-
-    fn group_by_commitment(
-        fcs: &[CS::G],
-        xss: &Vec<Vec<F>>,
-        yss: &Vec<Vec<F>>,
-    ) -> Vec<Claim<F, CS::G>> {
-        fcs.iter().cloned()
-            .zip(xss.iter().cloned())
-            .zip(yss.iter().cloned())
-            .map(|((c, xs), ys)| Claim { c, xs, ys })
-            .collect()
     }
 }
 
@@ -139,7 +127,7 @@ mod tests {
         let params = CS::setup(d, rng);
 
         let xss = random_xss(rng, t, max_m);
-        let opening = random_opening::<_, _, CS>(rng, &params.ck(), 15, t, xss);
+        let opening = random_opening::<_, _, CS>(rng, &params.ck(), d, t, xss);
 
         let sets_of_xss: Vec<HashSet<F>> = opening.xss.iter()
             .map(|xs| HashSet::from_iter(xs.iter().cloned()))

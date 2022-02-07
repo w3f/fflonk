@@ -65,6 +65,17 @@ pub struct Claim<F: PrimeField, C: CommitmentSpace<F>> {
     pub ys: Vec<F>,
 }
 
+pub fn group_by_commitment<F: PrimeField, C: CommitmentSpace<F>>(
+    fcs: &[C],
+    xss: &Vec<Vec<F>>,
+    yss: &Vec<Vec<F>>,
+) -> Vec<Claim<F, C>> {
+    fcs.iter().cloned()
+        .zip(xss.iter().cloned())
+        .zip(yss.iter().cloned())
+        .map(|((c, xs), ys)| Claim { c, xs, ys })
+        .collect()
+}
 
 pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::G>>(
     claims: Vec<Claim<F, CS::G>>,
