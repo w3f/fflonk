@@ -1,16 +1,13 @@
-pub mod kzg;
-pub mod multiple;
-
 use ark_ff::PrimeField;
-
+use ark_serialize::*;
+use ark_std::fmt::Debug;
 use ark_std::iter::Sum;
 use ark_std::ops::{Add, Sub};
-use ark_std::fmt::Debug;
 use ark_std::rand::Rng;
-use ark_serialize::*;
 
 use crate::Poly;
 
+pub mod kzg;
 
 pub trait CommitmentSpace<F: PrimeField>:
 Eq
@@ -74,12 +71,12 @@ pub trait PCS<F: PrimeField> {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use super::*;
-
     use ark_ff::Zero;
     use ark_poly::Polynomial;
 
     use crate::Poly;
+
+    use super::*;
 
     #[derive(Clone, PartialEq, Eq, Debug)]
     pub struct WrappedPolynomial<F: PrimeField>(pub Poly<F>);

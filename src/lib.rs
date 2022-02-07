@@ -4,7 +4,7 @@ use ark_ff::PrimeField;
 use ark_poly::univariate::{DenseOrSparsePolynomial, DensePolynomial};
 use ark_std::rand::Rng;
 
-use pcs::multiple::Transcript;
+use aggregation::multiple::Transcript;
 
 use crate::fflonk::Fflonk;
 use crate::pcs::PCS;
@@ -14,6 +14,7 @@ pub mod shplonk;
 pub mod fflonk;
 pub mod pcs;
 mod utils;
+mod aggregation;
 
 
 type Poly<F> = DensePolynomial<F>; // currently SparsePolynomial doesn't implement UVPolynomial anyway
