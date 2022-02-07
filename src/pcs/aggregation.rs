@@ -50,13 +50,17 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: ShplonkTranscript<F, CS::G>
     (l, zeta, q_comm)
 }
 
+pub struct Claim<F: PrimeField, C: CommitmentSpace<F>> {
+    pub c: C,
+    pub xs: Vec<F>,
+    pub ys: Vec<F>,
+}
 
-pub fn aggregate_commitments<F: PrimeField, CS: PCS<F>, T: ShplonkTranscript<F, CS::G>>(
-    fcs: &[CS::G],
+
+pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: ShplonkTranscript<F, CS::G>>(
+    claims: Vec<Claim<F, CS::G>>,
     qc: &CS::G,
     onec: &CS::G,
-    xss: &Vec<Vec<F>>,
-    yss: &Vec<Vec<F>>,
     transcript: &mut T,
 ) -> CS::G
 {
@@ -65,7 +69,7 @@ pub fn aggregate_commitments<F: PrimeField, CS: PCS<F>, T: ShplonkTranscript<F, 
     let zeta = transcript.get_zeta();
 
     let mut opening_set = HashSet::new();
-    for xs in xss {
+    for xs in claims.iter().map(|claim| &claim.xs) {
         opening_set.extend(xs);
     }
 
@@ -74,11 +78,12 @@ pub fn aggregate_commitments<F: PrimeField, CS: PCS<F>, T: ShplonkTranscript<F, 
         .reduce(|z, zi| z * zi)
         .unwrap();
 
-    let rs = xss.iter().zip(yss).map(|(xs, ys)| interpolate(&xs, &ys));
+    let rs = claims.iter()
+        .map(|Claim {c: _, xs, ys}| interpolate(xs, ys));
     let rs_at_zeta = rs.map(|ri| ri.evaluate(&zeta));
 
-    let mut zs_at_zeta: Vec<F> = xss.iter().map(|xs|
-        xs.iter()
+    let mut zs_at_zeta: Vec<F> = claims.iter().map(|claim|
+        claim.xs.iter()
             .map(|xi| zeta - xi)
             .reduce(|z, zi| z * zi)
             .unwrap()
@@ -86,13 +91,13 @@ pub fn aggregate_commitments<F: PrimeField, CS: PCS<F>, T: ShplonkTranscript<F, 
 
     ark_ff::batch_inversion(&mut zs_at_zeta);
 
-    let gs = crate::utils::powers(gamma, fcs.len() - 1);
+    let gs = crate::utils::powers(gamma, claims.len() - 1);
     assert_eq!(gs.len(), zs_at_zeta.len());
     let gzs: Vec<F> = gs.iter().zip(zs_at_zeta.iter()).map(|(&gi, zi_inv)| gi * zi_inv).collect();
-    assert_eq!(fcs.len(), gzs.len());
+    assert_eq!(claims.len(), gzs.len());
 
-    let fc: CS::G = fcs.iter().zip(gzs.iter())
-        .map(|(fci, &gzi)| fci.mul(z_at_zeta * gzi))
+    let fc: CS::G = claims.iter().zip(gzs.iter())
+        .map(|(claim, &gzi)| claim.c.mul(z_at_zeta * gzi))
         .sum();
 
     let r = rs_at_zeta.zip(gzs).map(|(ri_at_zeta, gzi)| ri_at_zeta * &gzi).sum::<F>() * z_at_zeta;

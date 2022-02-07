@@ -1,4 +1,3 @@
-use ark_std::Zero;
 use ark_ff::PrimeField;
 use ark_poly::{UVPolynomial, Polynomial};
 
@@ -7,7 +6,7 @@ use std::marker::PhantomData;
 
 use crate::Poly;
 use crate::pcs::PCS;
-use crate::pcs::aggregation::{aggregate_polys, aggregate_commitments};
+use crate::pcs::aggregation::{aggregate_polys, aggregate_claims, Claim};
 
 
 pub trait ShplonkTranscript<F, G> {
@@ -36,7 +35,6 @@ impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
         (agg_proof, opening_proof)
     }
 
-
     pub fn verify_many<T: ShplonkTranscript<F, CS::G>>(
         vk: &CS::VK,
         fcs: &[CS::G],
@@ -48,8 +46,21 @@ impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
     {
         let (agg_proof, opening_proof) = proof;
         let onec = CS::commit(&vk.clone().into(), &Poly::from_coefficients_slice(&[F::one()]));
-        let agg_c = aggregate_commitments::<F, CS, T>(fcs, &agg_proof, &onec, xss, yss, transcript);
+        let claims = Self::group_by_commitment(fcs, xss, yss);
+        let agg_c = aggregate_claims::<F, CS, T>(claims, &agg_proof, &onec, transcript);
         CS::verify(vk, agg_c, transcript.get_zeta(), F::zero(), opening_proof)
+    }
+
+    fn group_by_commitment(
+        fcs: &[CS::G],
+        xss: &Vec<Vec<F>>,
+        yss: &Vec<Vec<F>>,
+    ) -> Vec<Claim<F, CS::G>> {
+        fcs.iter().cloned()
+            .zip(xss.iter().cloned())
+            .zip(yss.iter().cloned())
+            .map(|((c, xs), ys)| Claim { c, xs, ys })
+            .collect()
     }
 }
 
