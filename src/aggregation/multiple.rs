@@ -6,6 +6,11 @@ use ark_poly::{Polynomial, UVPolynomial};
 use crate::{EuclideanPolynomial, Poly};
 use crate::pcs::{CommitmentSpace, PCS};
 
+pub struct MultipointClaim<F: PrimeField, C: CommitmentSpace<F>> {
+    pub c: C,
+    pub xs: Vec<F>,
+    pub ys: Vec<F>,
+}
 
 pub trait Transcript<F, G> {
     fn get_gamma(&mut self) -> F;
@@ -59,30 +64,24 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::G>>(
     (l, zeta, q_comm)
 }
 
-pub struct Claim<F: PrimeField, C: CommitmentSpace<F>> {
-    pub c: C,
-    pub xs: Vec<F>,
-    pub ys: Vec<F>,
-}
-
 pub fn group_by_commitment<F: PrimeField, C: CommitmentSpace<F>>(
     fcs: &[C],
     xss: &Vec<Vec<F>>,
     yss: &Vec<Vec<F>>,
-) -> Vec<Claim<F, C>> {
+) -> Vec<MultipointClaim<F, C>> {
     fcs.iter().cloned()
         .zip(xss.iter().cloned())
         .zip(yss.iter().cloned())
-        .map(|((c, xs), ys)| Claim { c, xs, ys })
+        .map(|((c, xs), ys)| MultipointClaim { c, xs, ys })
         .collect()
 }
 
 pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::G>>(
-    claims: Vec<Claim<F, CS::G>>,
+    claims: Vec<MultipointClaim<F, CS::G>>,
     qc: &CS::G,
     onec: &CS::G,
     transcript: &mut T,
-) -> Claim<F, CS::G>
+) -> MultipointClaim<F, CS::G>
 {
     let gamma = transcript.get_gamma();
     transcript.commit_to_q(&qc);
@@ -99,7 +98,7 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::G>>(
         .unwrap();
 
     let rs = claims.iter()
-        .map(|Claim { c: _, xs, ys }| interpolate(xs, ys));
+        .map(|MultipointClaim { c: _, xs, ys }| interpolate(xs, ys));
     let rs_at_zeta = rs.map(|ri| ri.evaluate(&zeta));
 
     let mut zs_at_zeta: Vec<F> = claims.iter().map(|claim|
@@ -123,7 +122,7 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::G>>(
     let r = rs_at_zeta.zip(gzs).map(|(ri_at_zeta, gzi)| ri_at_zeta * &gzi).sum::<F>() * z_at_zeta;
 
     let c = fc - onec.mul(r) - qc.mul(z_at_zeta);
-    Claim { c, xs: vec![zeta], ys: vec![F::zero()] }
+    MultipointClaim { c, xs: vec![zeta], ys: vec![F::zero()] }
 }
 
 
