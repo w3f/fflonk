@@ -12,7 +12,7 @@ use ark_std::io::{Read, Write};
 
 /// KZG commitment to G1 represented in projective coordinates.
 // Is serialized in affine, so muight make sense to batch-convert if there are many points.
-#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct KzgCommitment<E: PairingEngine>(pub E::G1Projective);
 
 impl <E: PairingEngine> CommitmentSpace<E::Fr> for KzgCommitment<E> {
