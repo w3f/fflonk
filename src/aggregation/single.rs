@@ -1,5 +1,5 @@
 use ark_ff::{PrimeField, Zero};
-use crate::pcs::{CommitmentSpace, PCS};
+use crate::pcs::{Commitment, PCS};
 use crate::Poly;
 use ark_poly::Polynomial;
 
@@ -7,13 +7,13 @@ use ark_poly::Polynomial;
 /// In other words, it is am instance in some language of "correct polynomial evaluations".
 /// Soundness properties of a claim are defined by that of the argument.
 #[derive(Clone, Debug)]
-pub struct Claim<F: PrimeField, C: CommitmentSpace<F>> {
+pub struct Claim<F: PrimeField, C: Commitment<F>> {
     pub c: C,
     pub x: F,
     pub y: F,
 }
 
-impl<F: PrimeField, C: CommitmentSpace<F>> Claim<F, C> {
+impl<F: PrimeField, C: Commitment<F>> Claim<F, C> {
     fn new<CS>(ck: &CS::CK, poly: &Poly<F>, at: F) -> Claim<F, C> where CS: PCS<F, C= C> {
         Claim {
             c: CS::commit(ck, poly),

@@ -9,7 +9,7 @@ use crate::Poly;
 
 pub mod kzg;
 
-pub trait CommitmentSpace<F: PrimeField>:
+pub trait Commitment<F: PrimeField>:
 Eq
 + Sized
 + Clone
@@ -51,7 +51,7 @@ pub trait PcsParams<CK, VK> {
 
 /// Polynomial commitment scheme.
 pub trait PCS<F: PrimeField> {
-    type C: CommitmentSpace<F>;
+    type C: Commitment<F>;
 
     type Proof;
 
@@ -111,7 +111,7 @@ pub(crate) mod tests {
         }
     }
 
-    impl<F: PrimeField> CommitmentSpace<F> for WrappedPolynomial<F> {
+    impl<F: PrimeField> Commitment<F> for WrappedPolynomial<F> {
         fn mul(&self, by: F) -> Self {
             let mut temp = Poly::zero(); //TODO
             temp += (by, &self.0);

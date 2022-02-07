@@ -1,5 +1,5 @@
 use ark_ec::PairingEngine;
-use crate::pcs::CommitmentSpace;
+use crate::pcs::Commitment;
 use ark_ff::PrimeField;
 use ark_std::ops::Add;
 use std::ops::Sub;
@@ -15,7 +15,7 @@ use ark_std::io::{Read, Write};
 #[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct KzgCommitment<E: PairingEngine>(pub E::G1Projective);
 
-impl <E: PairingEngine> CommitmentSpace<E::Fr> for KzgCommitment<E> {
+impl <E: PairingEngine> Commitment<E::Fr> for KzgCommitment<E> {
     fn mul(&self, by: E::Fr) -> KzgCommitment<E> {
         let x: E::G1Projective = self.0.mul(by.into_repr());
         KzgCommitment(x)

@@ -4,9 +4,9 @@ use ark_ff::{PrimeField, Zero};
 use ark_poly::{Polynomial, UVPolynomial};
 
 use crate::{EuclideanPolynomial, Poly};
-use crate::pcs::{CommitmentSpace, PCS};
+use crate::pcs::{Commitment, PCS};
 
-pub struct MultipointClaim<F: PrimeField, C: CommitmentSpace<F>> {
+pub struct MultipointClaim<F: PrimeField, C: Commitment<F>> {
     pub c: C,
     pub xs: Vec<F>,
     pub ys: Vec<F>,
@@ -64,7 +64,7 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
     (l, zeta, q_comm)
 }
 
-pub fn group_by_commitment<F: PrimeField, C: CommitmentSpace<F>>(
+pub fn group_by_commitment<F: PrimeField, C: Commitment<F>>(
     fcs: &[C],
     xss: &Vec<Vec<F>>,
     yss: &Vec<Vec<F>>,

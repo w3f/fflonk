@@ -53,13 +53,13 @@ pub mod tests {
     use ark_std::test_rng;
 
     use crate::pcs::kzg::KZG;
-    use crate::pcs::{PcsParams, CommitmentSpace};
+    use crate::pcs::{PcsParams, Commitment};
     use crate::pcs::tests::IdentityCommitment;
     use crate::Poly;
 
     use super::*;
 
-    pub struct TestOpening<F: PrimeField, C: CommitmentSpace<F>> {
+    pub struct TestOpening<F: PrimeField, C: Commitment<F>> {
         pub fs: Vec<Poly<F>>,
         pub fcs: Vec<C>,
         pub xss: Vec<Vec<F>>,
