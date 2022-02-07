@@ -13,8 +13,10 @@ use crate::Poly;
 
 
 pub trait CommitmentSpace<F: PrimeField>:
-Sized
+Eq
++ Sized
 + Clone
++ Debug
 + Add<Self, Output=Self>
 + Sub<Self, Output=Self>
 + Sum<Self>
@@ -79,7 +81,7 @@ pub(crate) mod tests {
 
     use crate::Poly;
 
-    #[derive(Clone)]
+    #[derive(Clone, PartialEq, Eq, Debug)]
     pub struct WrappedPolynomial<F: PrimeField>(pub Poly<F>);
 
     impl<F: PrimeField> WrappedPolynomial<F> {

@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 use ark_ff::PrimeField;
 use ark_poly::{Polynomial, UVPolynomial};
 
-use crate::pcs::aggregation::{aggregate_claims, aggregate_polys, Claim, Transcript, group_by_commitment};
+use crate::pcs::aggregation::{aggregate_claims, aggregate_polys, Transcript, group_by_commitment};
 use crate::pcs::PCS;
 use crate::Poly;
 
@@ -46,7 +46,7 @@ impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
 
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use ark_bw6_761::{BW6_761, Fr};
     use ark_std::iter::FromIterator;
     use ark_std::rand::Rng;
@@ -59,19 +59,11 @@ mod tests {
 
     use super::*;
 
-    impl<F: PrimeField, G> Transcript<F, G> for (F, F) {
-        fn get_gamma(&mut self) -> F { self.0 }
-
-        fn commit_to_q(&mut self, _q_comm: &G) {}
-
-        fn get_zeta(&mut self) -> F { self.1 }
-    }
-
     pub struct TestOpening<F: PrimeField, C: CommitmentSpace<F>> {
-        fs: Vec<Poly<F>>,
-        fcs: Vec<C>,
-        xss: Vec<Vec<F>>,
-        yss: Vec<Vec<F>>,
+        pub fs: Vec<Poly<F>>,
+        pub fcs: Vec<C>,
+        pub xss: Vec<Vec<F>>,
+        pub yss: Vec<Vec<F>>,
     }
 
     pub fn random_xss<R: Rng, F: PrimeField>(
@@ -135,7 +127,7 @@ mod tests {
 
         let transcript = &mut (F::rand(rng), F::rand(rng));
 
-        let proof = Shplonk::<F, CS>::open_many(&params.ck(), &opening.fs, sets_of_xss.as_slice(), transcript);
+        let proof = Shplonk::<F, CS>::open_many(&params.ck(), &opening.fs, &sets_of_xss, transcript);
 
         assert!(Shplonk::<F, CS>::verify_many(&params.vk(), &opening.fcs, proof, &opening.xss, &opening.yss, transcript))
     }

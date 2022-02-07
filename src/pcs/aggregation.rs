@@ -158,3 +158,66 @@ fn interpolate<F: PrimeField>(xs: &[F], ys: &[F]) -> Poly<F> {
     }
     res
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ark_std::test_rng;
+    use crate::pcs::tests::IdentityCommitment;
+    use crate::shplonk::tests::{random_xss, random_opening};
+    use ark_bw6_761::{Fr, BW6_761};
+    use crate::pcs::kzg::KZG;
+    use crate::pcs::PcsParams;
+    use ark_std::iter::FromIterator;
+
+
+    impl<F: PrimeField, G> Transcript<F, G> for (F, F) {
+        fn get_gamma(&mut self) -> F { self.0 }
+
+        fn commit_to_q(&mut self, _q_comm: &G) {}
+
+        fn get_zeta(&mut self) -> F { self.1 }
+    }
+
+
+    fn _test_aggregation<F: PrimeField, CS: PCS<F>>() {
+        let rng = &mut test_rng();
+
+        let d = 15; // degree of polynomials
+        let t = 4; // number of polynomials
+        let max_m = 3; // maximal number of opening points per polynomial
+
+        let params = CS::setup(d, rng);
+        let (ck, vk) = (params.ck(), params.vk());
+
+        let xss = random_xss(rng, t, max_m);
+        let opening = random_opening::<_, _, CS>(rng, &ck, d, t, xss);
+
+        let sets_of_xss: Vec<HashSet<F>> = opening.xss.iter()
+            .map(|xs| HashSet::from_iter(xs.iter().cloned()))
+            .collect();
+
+        let transcript = &mut (F::rand(rng), F::rand(rng));
+
+        let (agg_poly, zeta, agg_proof) = aggregate_polys::<_, CS, _>(&ck, &opening.fs, &sets_of_xss, transcript);
+        let claims = group_by_commitment(&opening.fcs, &opening.xss, &opening.yss);
+        let onec = CS::commit(&vk.clone().into(), &Poly::from_coefficients_slice(&[F::one()]));
+        let agg_claim = aggregate_claims::<_, CS, _>(claims, &agg_proof, &onec, transcript);
+
+        assert_eq!(CS::commit(&ck, &agg_poly), agg_claim.c);
+        assert_eq!(zeta, agg_claim.xs[0]);
+        assert_eq!(agg_poly.evaluate(&zeta), agg_claim.ys[0]);
+        assert!(agg_claim.ys[0].is_zero());
+    }
+
+    #[test]
+    fn test_aggregation_id() {
+        _test_aggregation::<Fr, IdentityCommitment>();
+    }
+
+    #[test]
+    fn test_aggregation_kzg() {
+        _test_aggregation::<Fr, KZG<BW6_761>>();
+    }
+}
