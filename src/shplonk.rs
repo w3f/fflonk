@@ -198,17 +198,31 @@ mod tests {
         fn get_zeta(&mut self) -> F { self.1 }
     }
 
-    pub fn generate_test_data<R, F, CS>(
+    pub struct TestOpening<F: PrimeField, C: CommitmentSpace<F>> {
+        fs: Vec<Poly<F>>,
+        fcs: Vec<C>,
+        xss: Vec<Vec<F>>,
+        yss: Vec<Vec<F>>,
+    }
+
+    pub fn random_xss<R: Rng, F: PrimeField>(
+        rng: &mut R,
+        t: usize, // number of polynomials
+        max_m: usize, // maximal number of opening points per polynomial
+    ) -> Vec<Vec<F>> {
+        (0..t)
+            .map(|_| (0..rng.gen_range(1..max_m))
+                .map(|_| F::rand(rng)).collect::<Vec<_>>())
+            .collect()
+    }
+
+    pub fn random_opening<R, F, CS>(
         rng: &mut R,
         ck: &CS::CK,
         d: usize, // degree of polynomials
         t: usize, // number of polynomials
-        xss: &Vec<Vec<F>>, // vecs of opening points per polynomial
-    ) -> (
-        Vec<Poly<F>>, // polynomials
-        Vec<CS::G>, // commitments
-        Vec<Vec<F>>, // evaluations per polynomial
-    ) where
+        xss: Vec<Vec<F>>, // vecs of opening points per polynomial
+    ) -> TestOpening<F, CS::G> where
         R: Rng,
         F: PrimeField,
         CS: PCS<F>,
@@ -231,34 +245,30 @@ mod tests {
                     .collect::<Vec<_>>()
             ).collect();
 
-        (fs, fcs, yss)
+        TestOpening { fs, fcs, xss, yss }
     }
 
     fn _test_shplonk<F: PrimeField, CS: PCS<F>>() {
         let rng = &mut test_rng();
 
-        let params = CS::setup(123, rng);
-
+        let d = 15; // degree of polynomials
         let t = 4; // number of polynomials
         let max_m = 3; // maximal number of opening points per polynomial
 
-        let xss: Vec<_> = (0..t)
-            .map(|_| (0..rng.gen_range(1..max_m))
-                .map(|_| F::rand(rng)).collect::<Vec<_>>())
-            .collect();
+        let params = CS::setup(d, rng);
 
-        let (fs, fcs, yss) =
-            generate_test_data::<_, _, CS>(rng, &params.ck(),15, 4, &xss);
+        let xss = random_xss(rng, t, max_m);
+        let opening = random_opening::<_, _, CS>(rng, &params.ck(), 15, t, xss);
 
-        let sets_of_xss: Vec<HashSet<F>> = xss.iter()
+        let sets_of_xss: Vec<HashSet<F>> = opening.xss.iter()
             .map(|xs| HashSet::from_iter(xs.iter().cloned()))
             .collect();
 
         let transcript = &mut (F::rand(rng), F::rand(rng));
 
-        let (qc, qlc) = Shplonk::<F, CS>::open_many(&params.ck(), &fs, sets_of_xss.as_slice(), transcript);
+        let proof = Shplonk::<F, CS>::open_many(&params.ck(), &opening.fs, sets_of_xss.as_slice(), transcript);
 
-        assert!(Shplonk::<F, CS>::verify_many(&params.vk(), &fcs, (qc, qlc), &xss, &yss, transcript))
+        assert!(Shplonk::<F, CS>::verify_many(&params.vk(), &opening.fcs, proof, &opening.xss, &opening.yss, transcript))
     }
 
     #[test]
