@@ -118,7 +118,6 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
 
 #[cfg(test)]
 mod tests {
-    use ark_bw6_761::{BW6_761, Fr};
     use ark_poly::{Polynomial, UVPolynomial};
     use ark_std::rand::Rng;
     use ark_std::test_rng;
@@ -128,6 +127,11 @@ mod tests {
     use crate::pcs::tests::IdentityCommitment;
 
     use super::*;
+    use ark_ec::PairingEngine;
+
+    pub(crate) type TestCurve = ark_bw6_761::BW6_761;
+    pub(crate) type TestField = <TestCurve as PairingEngine>::Fr;
+    pub(crate) type TestKzg = KZG::<TestCurve>;
 
     fn generate_test_data<R, F>(
         rng: &mut R,
@@ -219,21 +223,21 @@ mod tests {
 
     #[test]
     fn test_fflonk_single_id() {
-        _test_fflonk_single::<Fr, IdentityCommitment>();
+        _test_fflonk_single::<TestField, IdentityCommitment>();
     }
 
     #[test]
     fn test_fflonk_single_kzg() {
-        _test_fflonk_single::<Fr, KZG<BW6_761>>();
+        _test_fflonk_single::<TestField, TestKzg>();
     }
 
     #[test]
     fn test_fflonk_id() {
-        _test_fflonk::<Fr, IdentityCommitment>();
+        _test_fflonk::<TestField, IdentityCommitment>();
     }
 
     #[test]
     fn test_fflonk_kzg() {
-        _test_fflonk::<Fr, KZG<BW6_761>>();
+        _test_fflonk::<TestField, TestKzg>();
     }
 }

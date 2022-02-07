@@ -46,18 +46,17 @@ impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
 
 
 #[cfg(test)]
-pub mod tests {
-    use ark_bw6_761::{BW6_761, Fr};
+pub(crate) mod tests {
     use ark_std::iter::FromIterator;
     use ark_std::rand::Rng;
     use ark_std::test_rng;
 
-    use crate::pcs::kzg::KZG;
     use crate::pcs::{PcsParams, Commitment};
     use crate::pcs::tests::IdentityCommitment;
     use crate::Poly;
 
     use super::*;
+    use crate::tests::{TestKzg, TestField};
 
     pub struct TestOpening<F: PrimeField, C: Commitment<F>> {
         pub fs: Vec<Poly<F>>,
@@ -66,7 +65,7 @@ pub mod tests {
         pub yss: Vec<Vec<F>>,
     }
 
-    pub fn random_xss<R: Rng, F: PrimeField>(
+    pub(crate) fn random_xss<R: Rng, F: PrimeField>(
         rng: &mut R,
         t: usize, // number of polynomials
         max_m: usize, // maximal number of opening points per polynomial
@@ -77,7 +76,7 @@ pub mod tests {
             .collect()
     }
 
-    pub fn random_opening<R, F, CS>(
+    pub(crate) fn random_opening<R, F, CS>(
         rng: &mut R,
         ck: &CS::CK,
         d: usize, // degree of polynomials
@@ -134,11 +133,11 @@ pub mod tests {
 
     #[test]
     fn test_shplonk_id() {
-        _test_shplonk::<Fr, IdentityCommitment>();
+        _test_shplonk::<TestField, IdentityCommitment>();
     }
 
     #[test]
     fn test_shplonk_kzg() {
-        _test_shplonk::<Fr, KZG<BW6_761>>();
+        _test_shplonk::<TestField, TestKzg>();
     }
 }

@@ -165,10 +165,9 @@ mod tests {
     use ark_std::test_rng;
     use crate::pcs::tests::IdentityCommitment;
     use crate::shplonk::tests::{random_xss, random_opening};
-    use ark_bw6_761::{Fr, BW6_761};
-    use crate::pcs::kzg::KZG;
     use crate::pcs::PcsParams;
     use ark_std::iter::FromIterator;
+    use crate::tests::{TestKzg, TestField};
 
 
     impl<F: PrimeField, G> Transcript<F, G> for (F, F) {
@@ -212,11 +211,11 @@ mod tests {
 
     #[test]
     fn test_aggregation_id() {
-        _test_aggregation::<Fr, IdentityCommitment>();
+        _test_aggregation::<TestField, IdentityCommitment>();
     }
 
     #[test]
     fn test_aggregation_kzg() {
-        _test_aggregation::<Fr, KZG<BW6_761>>();
+        _test_aggregation::<TestField, TestKzg>();
     }
 }

@@ -14,7 +14,7 @@ pub struct Claim<F: PrimeField, C: Commitment<F>> {
 }
 
 impl<F: PrimeField, C: Commitment<F>> Claim<F, C> {
-    fn new<CS>(ck: &CS::CK, poly: &Poly<F>, at: F) -> Claim<F, C> where CS: PCS<F, C= C> {
+    fn new<CS>(ck: &CS::CK, poly: &Poly<F>, at: F) -> Claim<F, C> where CS: PCS<F, C=C> {
         Claim {
             c: CS::commit(ck, poly),
             x: at,
@@ -71,8 +71,7 @@ mod tests {
     use ark_poly::UVPolynomial;
     use crate::pcs::PcsParams;
     use crate::pcs::tests::IdentityCommitment;
-    use ark_bw6_761::{Fr, BW6_761};
-    use crate::pcs::kzg::KZG;
+    use crate::tests::{TestField, TestKzg};
 
 
     fn _test_aggregation<F: PrimeField, CS: PCS<F>>() {
@@ -80,7 +79,7 @@ mod tests {
         let d = 15;
         let t = 4;
         let params = CS::setup(d, rng);
-        let ck= params.ck();
+        let ck = params.ck();
 
         assert!(aggregate_polys::<F>(&[], &[]).is_zero());
 
@@ -104,11 +103,11 @@ mod tests {
 
     #[test]
     fn test_aggregation_id() {
-        _test_aggregation::<Fr, IdentityCommitment>();
+        _test_aggregation::<TestField, IdentityCommitment>();
     }
 
     #[test]
     fn test_aggregation_kzg() {
-        _test_aggregation::<Fr, KZG<BW6_761>>();
+        _test_aggregation::<TestField, TestKzg>();
     }
 }
