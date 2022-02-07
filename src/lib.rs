@@ -4,7 +4,7 @@ use ark_ff::PrimeField;
 use ark_poly::univariate::{DenseOrSparsePolynomial, DensePolynomial};
 use ark_std::rand::Rng;
 
-use pcs::aggregation::Transcript;
+use pcs::multiple::Transcript;
 
 use crate::fflonk::Fflonk;
 use crate::pcs::PCS;
