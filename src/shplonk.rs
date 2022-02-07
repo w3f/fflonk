@@ -1,16 +1,13 @@
 use ark_std::Zero;
 use ark_ff::PrimeField;
 use ark_poly::{UVPolynomial, Polynomial};
-use ark_poly::univariate::DensePolynomial;
 
 use std::collections::HashSet;
-
-use crate::EuclideanPolynomial;
-use crate::pcs::{PCS, CommitmentSpace};
-
-
 use std::marker::PhantomData;
+
 use crate::Poly;
+use crate::pcs::PCS;
+use crate::pcs::aggregation::{aggregate_polys, aggregate_commitments};
 
 
 pub trait ShplonkTranscript<F, G> {
@@ -33,99 +30,12 @@ impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
         transcript: &mut T,
     ) -> (CS::G, CS::Proof)
     {
-        assert_eq!(xss.len(), fs.len(), "{} opening sets specified for {} polynomials", xss.len(), fs.len());
-        let mut opening_set = HashSet::new();
-        for xs in xss {
-            opening_set.extend(xs);
-        }
-        let z = crate::utils::z_of_set(&opening_set);
-
-        let zs: Vec<_> = xss.iter()
-            .map(|xs| crate::utils::z_of_set(xs))
-            .collect();
-
-        let (qs, rs): (Vec<_>, Vec<_>) = fs.iter().zip(&zs)
-            .map(|(fi, zi)| fi.divide_with_q_and_r(zi))
-            .unzip();
-
-        let gamma = transcript.get_gamma();
-        let q = crate::utils::randomize(gamma, &qs);
-        let q_comm = CS::commit(ck, &q);//scheme.commit(&q);
-        transcript.commit_to_q(&q_comm);
-        let zeta = transcript.get_zeta();
-
-        let z_zeta = z.evaluate(&zeta);
-        let mut zs_zeta: Vec<_> = zs.iter().map(|zi| zi.evaluate(&zeta)).collect();
-        let rs_zeta: Vec<_> = rs.iter().map(|ri| ri.evaluate(&zeta)).collect();
-        ark_ff::batch_inversion(&mut zs_zeta);
-
-        let gs = crate::utils::powers(gamma, fs.len() - 1);
-
-        let mut l = DensePolynomial::zero();
-        for (((fi, ri), zi_inv), gi) in fs.iter()
-            .zip(rs_zeta)
-            .zip(zs_zeta)
-            .zip(gs) {
-            l += (gi * zi_inv, &(fi - &DensePolynomial::from_coefficients_vec(vec![ri])));
-        }
-        let l = &(&l - &q) * z_zeta;
-
-        // let z_of_zeta = crate::utils::z_of_point(&zeta);
-        // let (q_of_l, r_of_l) = l.divide_with_q_and_r(&z_of_zeta);
-        // assert!(r_of_l.is_zero());
-        // let q_of_l1 = CS::commit(ck, &q_of_l);//scheme.commit(&q_of_l);
-        let q_of_l1 = CS::open(ck, &l, zeta);
-        (q_comm, q_of_l1)
+        let (agg_poly, zeta, agg_proof) = aggregate_polys::<F, CS, T>(ck, fs, xss, transcript);
+        assert!(agg_poly.evaluate(&zeta).is_zero());
+        let opening_proof = CS::open(ck, &agg_poly, zeta);
+        (agg_proof, opening_proof)
     }
 
-    fn get_linearization_commitment<T: ShplonkTranscript<F, CS::G>>(
-        fcs: &[CS::G],
-        qc: &CS::G,
-        onec: &CS::G,
-        xss: &Vec<Vec<F>>,
-        yss: &Vec<Vec<F>>,
-        transcript: &mut T,
-    ) -> CS::G
-    {
-        let gamma = transcript.get_gamma();
-        transcript.commit_to_q(&qc);
-        let zeta = transcript.get_zeta();
-
-        let mut opening_set = HashSet::new();
-        for xs in xss {
-            opening_set.extend(xs);
-        }
-
-        let z_at_zeta = opening_set.iter()
-            .map(|xi| zeta - xi)
-            .reduce(|z, zi| z * zi)
-            .unwrap();
-
-        let rs = xss.iter().zip(yss).map(|(xs, ys)| Self::interpolate(&xs, &ys));
-        let rs_at_zeta = rs.map(|ri| ri.evaluate(&zeta));
-
-        let mut zs_at_zeta: Vec<F> = xss.iter().map(|xs|
-            xs.iter()
-                .map(|xi| zeta - xi)
-                .reduce(|z, zi| z * zi)
-                .unwrap()
-        ).collect();
-
-        ark_ff::batch_inversion(&mut zs_at_zeta);
-
-        let gs = crate::utils::powers(gamma, fcs.len() - 1);
-        assert_eq!(gs.len(), zs_at_zeta.len());
-        let gzs: Vec<F> = gs.iter().zip(zs_at_zeta.iter()).map(|(&gi, zi_inv)| gi * zi_inv).collect();
-        assert_eq!(fcs.len(), gzs.len());
-
-        let fc: CS::G = fcs.iter().zip(gzs.iter())
-            .map(|(fci, &gzi)| fci.mul(z_at_zeta * gzi))
-            .sum();
-
-        let r = rs_at_zeta.zip(gzs).map(|(ri_at_zeta, gzi)| ri_at_zeta * &gzi).sum::<F>() * z_at_zeta;
-
-        fc - onec.mul(r) - qc.mul(z_at_zeta)
-    }
 
     pub fn verify_many<T: ShplonkTranscript<F, CS::G>>(
         vk: &CS::VK,
@@ -136,43 +46,10 @@ impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
         transcript: &mut T,
     ) -> bool
     {
-        let qc = proof.0; // commitment to the original quotient
-        let lqc = proof.1; // commitment to the quotient of the linearization polynomial
+        let (agg_proof, opening_proof) = proof;
         let onec = CS::commit(&vk.clone().into(), &Poly::from_coefficients_slice(&[F::one()]));
-        let lc = Self::get_linearization_commitment(fcs, &qc, &onec, xss, yss, transcript);
-        CS::verify(vk, lc, transcript.get_zeta(), F::zero(), lqc)
-    }
-
-    fn interpolate(xs: &[F], ys: &[F]) -> DensePolynomial<F> {
-        let x1 = xs[0];
-        let mut l = crate::utils::z_of_point(&x1);
-        for &xj in xs.iter().skip(1) {
-            let q = crate::utils::z_of_point(&xj);
-            l = &l * &q;
-        }
-
-        let mut ws = vec![];
-        for xj in xs {
-            let mut wj = F::one();
-            for xk in xs {
-                if xk != xj {
-                    let d = *xj - xk;
-                    wj *= d;
-                }
-            }
-            ws.push(wj);
-        }
-        ark_ff::batch_inversion(&mut ws);
-
-        let mut res = DensePolynomial::zero();
-        for ((&wi, &xi), &yi) in ws.iter().zip(xs).zip(ys) {
-            let d = crate::utils::z_of_point(&xi);
-            let mut z = &l / &d;
-            z = &z * wi;
-            z = &z * yi;
-            res = res + z;
-        }
-        res
+        let agg_c = aggregate_commitments::<F, CS, T>(fcs, &agg_proof, &onec, xss, yss, transcript);
+        CS::verify(vk, agg_c, transcript.get_zeta(), F::zero(), opening_proof)
     }
 }
 
@@ -248,7 +125,7 @@ mod tests {
             .collect();
 
         let (fs, fcs, yss) =
-            generate_test_data::<_, _, CS>(rng, &params.ck(),15, 4, &xss);
+            generate_test_data::<_, _, CS>(rng, &params.ck(), 15, 4, &xss);
 
         let sets_of_xss: Vec<HashSet<F>> = xss.iter()
             .map(|xs| HashSet::from_iter(xs.iter().cloned()))

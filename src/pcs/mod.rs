@@ -1,4 +1,5 @@
 pub mod kzg;
+pub mod aggregation;
 
 use ark_ff::PrimeField;
 
