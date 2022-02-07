@@ -1,20 +1,12 @@
-use ark_ff::PrimeField;
-use ark_poly::{UVPolynomial, Polynomial};
-
 use std::collections::HashSet;
 use std::marker::PhantomData;
 
-use crate::Poly;
+use ark_ff::PrimeField;
+use ark_poly::{Polynomial, UVPolynomial};
+
+use crate::pcs::aggregation::{aggregate_claims, aggregate_polys, Claim, Transcript};
 use crate::pcs::PCS;
-use crate::pcs::aggregation::{aggregate_polys, aggregate_claims, Claim};
-
-
-pub trait ShplonkTranscript<F, G> {
-    fn get_gamma(&mut self) -> F;
-    fn commit_to_q(&mut self, q_comm: &G);
-    fn get_zeta(&mut self) -> F;
-}
-
+use crate::Poly;
 
 pub struct Shplonk<F: PrimeField, CS: PCS<F>> {
     _field: PhantomData<F>,
@@ -22,7 +14,7 @@ pub struct Shplonk<F: PrimeField, CS: PCS<F>> {
 }
 
 impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
-    pub fn open_many<T: ShplonkTranscript<F, CS::G>>(
+    pub fn open_many<T: Transcript<F, CS::G>>(
         ck: &CS::CK,
         fs: &[Poly<F>],
         xss: &[HashSet<F>],
@@ -35,7 +27,7 @@ impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
         (agg_proof, opening_proof)
     }
 
-    pub fn verify_many<T: ShplonkTranscript<F, CS::G>>(
+    pub fn verify_many<T: Transcript<F, CS::G>>(
         vk: &CS::VK,
         fcs: &[CS::G],
         proof: (CS::G, CS::Proof),
@@ -67,18 +59,19 @@ impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::pcs::tests::IdentityCommitment;
-
-    use ark_std::test_rng;
+    use ark_bw6_761::{BW6_761, Fr};
     use ark_std::iter::FromIterator;
     use ark_std::rand::Rng;
-    use crate::Poly;
-    use ark_bw6_761::{BW6_761, Fr};
+    use ark_std::test_rng;
+
     use crate::pcs::kzg::KZG;
     use crate::pcs::PcsParams;
+    use crate::pcs::tests::IdentityCommitment;
+    use crate::Poly;
 
-    impl<F: PrimeField, G> ShplonkTranscript<F, G> for (F, F) {
+    use super::*;
+
+    impl<F: PrimeField, G> Transcript<F, G> for (F, F) {
         fn get_gamma(&mut self) -> F { self.0 }
 
         fn commit_to_q(&mut self, _q_comm: &G) {}

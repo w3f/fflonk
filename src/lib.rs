@@ -1,10 +1,14 @@
-use ark_ff::PrimeField;
-use ark_poly::univariate::{DensePolynomial, DenseOrSparsePolynomial};
-use crate::fflonk::Fflonk;
-use crate::shplonk::{ShplonkTranscript, Shplonk};
-use crate::pcs::PCS;
 use std::marker::PhantomData;
+
+use ark_ff::PrimeField;
+use ark_poly::univariate::{DenseOrSparsePolynomial, DensePolynomial};
 use ark_std::rand::Rng;
+
+use pcs::aggregation::Transcript;
+
+use crate::fflonk::Fflonk;
+use crate::pcs::PCS;
+use crate::shplonk::Shplonk;
 
 pub mod shplonk;
 pub mod fflonk;
@@ -38,7 +42,7 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
         CS::setup(max_degree, rng)
     }
 
-    pub fn open<T: ShplonkTranscript<F, CS::G>>(
+    pub fn open<T: Transcript<F, CS::G>>(
         ck: &CS::CK,
         fss: &[Vec<Poly<F>>], // vecs of polynomials to combine
         ts: &[usize], // lengths of each combination
@@ -65,7 +69,7 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
         Shplonk::<F, CS>::open_many(ck, &gs, &xss, transcript)
     }
 
-    pub fn verify<T: ShplonkTranscript<F, CS::G>>(
+    pub fn verify<T: Transcript<F, CS::G>>(
         vk: &CS::VK,
         gcs: &[CS::G],
         ts: &[usize],
@@ -85,7 +89,7 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
         Shplonk::<F, CS>::verify_many(vk, &gcs, proof, &xss, &yss, transcript)
     }
 
-    pub fn open_single<T: ShplonkTranscript<F, CS::G>>(
+    pub fn open_single<T: Transcript<F, CS::G>>(
         ck: &CS::CK,
         fs: &[Poly<F>], // polynomials to combine
         t: usize, // lengths of the combination
@@ -96,7 +100,7 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
         Self::open(ck, &[fs.to_vec()], &[t], &[roots.to_vec()], transcript)
     }
 
-    pub fn verify_single<T: ShplonkTranscript<F, CS::G>>(
+    pub fn verify_single<T: Transcript<F, CS::G>>(
         vk: &CS::VK,
         gc: &CS::G,
         t: usize,
@@ -113,16 +117,16 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use ark_std::test_rng;
-    use ark_std::rand::Rng;
-
-    use ark_poly::{UVPolynomial, Polynomial};
-
-    use crate::pcs::tests::IdentityCommitment;
     use ark_bw6_761::{BW6_761, Fr};
+    use ark_poly::{Polynomial, UVPolynomial};
+    use ark_std::rand::Rng;
+    use ark_std::test_rng;
+
     use crate::pcs::kzg::KZG;
     use crate::pcs::PcsParams;
+    use crate::pcs::tests::IdentityCommitment;
+
+    use super::*;
 
     fn generate_test_data<R, F>(
         rng: &mut R,

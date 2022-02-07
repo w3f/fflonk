@@ -1,11 +1,20 @@
-use crate::shplonk::ShplonkTranscript;
-use crate::{Poly, EuclideanPolynomial};
 use std::collections::HashSet;
+
 use ark_ff::{PrimeField, Zero};
-use crate::pcs::{PCS, CommitmentSpace};
 use ark_poly::{Polynomial, UVPolynomial};
 
-pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: ShplonkTranscript<F, CS::G>>(
+use crate::{EuclideanPolynomial, Poly};
+use crate::pcs::{CommitmentSpace, PCS};
+
+
+pub trait Transcript<F, G> {
+    fn get_gamma(&mut self) -> F;
+    fn commit_to_q(&mut self, q_comm: &G);
+    fn get_zeta(&mut self) -> F;
+}
+
+
+pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::G>>(
     ck: &CS::CK,
     fs: &[Poly<F>],
     xss: &[HashSet<F>],
@@ -57,7 +66,7 @@ pub struct Claim<F: PrimeField, C: CommitmentSpace<F>> {
 }
 
 
-pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: ShplonkTranscript<F, CS::G>>(
+pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::G>>(
     claims: Vec<Claim<F, CS::G>>,
     qc: &CS::G,
     onec: &CS::G,
