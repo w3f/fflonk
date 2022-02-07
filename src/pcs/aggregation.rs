@@ -10,7 +10,7 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: ShplonkTranscript<F, CS::G>
     fs: &[Poly<F>],
     xss: &[HashSet<F>],
     transcript: &mut T,
-) -> (Poly<F>, F, CS::G)  {
+) -> (Poly<F>, F, CS::G) {
     assert_eq!(xss.len(), fs.len(), "{} opening sets specified for {} polynomials", xss.len(), fs.len());
     let mut opening_set = HashSet::new();
     for xs in xss {
@@ -62,7 +62,7 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: ShplonkTranscript<F, CS::G
     qc: &CS::G,
     onec: &CS::G,
     transcript: &mut T,
-) -> CS::G
+) -> Claim<F, CS::G>
 {
     let gamma = transcript.get_gamma();
     transcript.commit_to_q(&qc);
@@ -79,7 +79,7 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: ShplonkTranscript<F, CS::G
         .unwrap();
 
     let rs = claims.iter()
-        .map(|Claim {c: _, xs, ys}| interpolate(xs, ys));
+        .map(|Claim { c: _, xs, ys }| interpolate(xs, ys));
     let rs_at_zeta = rs.map(|ri| ri.evaluate(&zeta));
 
     let mut zs_at_zeta: Vec<F> = claims.iter().map(|claim|
@@ -102,7 +102,8 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: ShplonkTranscript<F, CS::G
 
     let r = rs_at_zeta.zip(gzs).map(|(ri_at_zeta, gzi)| ri_at_zeta * &gzi).sum::<F>() * z_at_zeta;
 
-    fc - onec.mul(r) - qc.mul(z_at_zeta)
+    let c = fc - onec.mul(r) - qc.mul(z_at_zeta);
+    Claim { c, xs: vec![zeta], ys: vec![F::zero()] }
 }
 
 

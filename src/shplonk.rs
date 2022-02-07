@@ -47,8 +47,8 @@ impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
         let (agg_proof, opening_proof) = proof;
         let onec = CS::commit(&vk.clone().into(), &Poly::from_coefficients_slice(&[F::one()]));
         let claims = Self::group_by_commitment(fcs, xss, yss);
-        let agg_c = aggregate_claims::<F, CS, T>(claims, &agg_proof, &onec, transcript);
-        CS::verify(vk, agg_c, transcript.get_zeta(), F::zero(), opening_proof)
+        let agg_claim = aggregate_claims::<F, CS, T>(claims, &agg_proof, &onec, transcript);
+        CS::verify(vk, agg_claim.c, agg_claim.xs[0], agg_claim.ys[0], opening_proof)
     }
 
     fn group_by_commitment(
