@@ -5,6 +5,8 @@ use ark_poly::{Polynomial, UVPolynomial};
 
 use crate::{EuclideanPolynomial, Poly};
 use crate::pcs::{Commitment, PCS};
+use ark_std::iterable::Iterable;
+use crate::utils::poly::interpolate_evaluate;
 
 pub struct MultipointClaim<F: PrimeField, C: Commitment<F>> {
     pub c: C,
@@ -97,9 +99,9 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
         .reduce(|z, zi| z * zi)
         .unwrap();
 
-    let rs = claims.iter()
-        .map(|MultipointClaim { c: _, xs, ys }| interpolate(xs, ys));
-    let rs_at_zeta = rs.map(|ri| ri.evaluate(&zeta));
+    let rs_at_zeta = claims.iter()
+        .map(|MultipointClaim { c: _, xs, ys }| interpolate_evaluate(xs, ys, &zeta));
+    // let rs_at_zeta = rs.map(|ri| ri.evaluate(&zeta));
 
     let mut zs_at_zeta: Vec<F> = claims.iter().map(|claim|
         claim.xs.iter()
@@ -126,37 +128,7 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
 }
 
 
-fn interpolate<F: PrimeField>(xs: &[F], ys: &[F]) -> Poly<F> {
-    let x1 = xs[0];
-    let mut l = crate::utils::z_of_point(&x1);
-    for &xj in xs.iter().skip(1) {
-        let q = crate::utils::z_of_point(&xj);
-        l = &l * &q;
-    }
 
-    let mut ws = vec![];
-    for xj in xs {
-        let mut wj = F::one();
-        for xk in xs {
-            if xk != xj {
-                let d = *xj - xk;
-                wj *= d;
-            }
-        }
-        ws.push(wj);
-    }
-    ark_ff::batch_inversion(&mut ws);
-
-    let mut res = Poly::zero();
-    for ((&wi, &xi), &yi) in ws.iter().zip(xs).zip(ys) {
-        let d = crate::utils::z_of_point(&xi);
-        let mut z = &l / &d;
-        z = &z * wi;
-        z = &z * yi;
-        res = res + z;
-    }
-    res
-}
 
 
 #[cfg(test)]

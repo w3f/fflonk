@@ -1,4 +1,5 @@
 pub mod ec;
+pub(crate) mod poly;
 
 use ark_ff::{FftField, Field};
 use ark_poly::{Polynomial, UVPolynomial};
