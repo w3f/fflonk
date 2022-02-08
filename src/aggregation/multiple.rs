@@ -29,12 +29,6 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
 ) -> (Poly<F>, F, CS::C) {
     assert_eq!(xss.len(), fs.len(), "{} opening sets specified for {} polynomials", xss.len(), fs.len());
 
-    let mut opening_set = HashSet::new();
-    for xs in xss {
-        opening_set.extend(xs);
-    }
-    let agg_z = crate::utils::z_of_set(&opening_set);
-
     // zi - vanishing polynomials of the set {xj} of opening points of fi
     let zs: Vec<_> = xss.iter()
         .map(|xs| crate::utils::z_of_set(xs))
@@ -52,9 +46,9 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
     transcript.commit_to_q(&qc);
     let zeta = transcript.get_zeta();
 
-    let agg_z_at_zeta = agg_z.evaluate(&zeta);
-    let zs_at_zeta: Vec<_> = zs.iter().map(|zi| zi.evaluate(&zeta)).collect();
     let rs_at_zeta: Vec<_> = rs.iter().map(|ri| ri.evaluate(&zeta)).collect();
+    let zs_at_zeta: Vec<_> = zs.iter().map(|zi| zi.evaluate(&zeta)).collect();
+    let normalizer = zs_at_zeta[0];
 
     let mut zs_at_zeta_inv = zs_at_zeta;
     ark_ff::batch_inversion(&mut zs_at_zeta_inv);
@@ -62,9 +56,11 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
     // 1, gamma, ..., gamma^{k-1}
     // Notice we already used gamma to compute the aggregate quotient q.
     let powers = crate::utils::powers(gamma, fs.len() - 1);
+    assert!(powers[0].is_one());
     let coeffs: Vec<F> = powers.iter().zip(zs_at_zeta_inv.iter())
-        .map(|(&gamma_i, zi_inv)| gamma_i * zi_inv * agg_z_at_zeta) // (gamma^i / z_i(zeta)) * agg_z(zeta)
+        .map(|(&gamma_i, zi_inv)| gamma_i * zi_inv * normalizer) // (gamma^i / z_i(zeta)) * agg_z(zeta)
         .collect();
+    assert!(coeffs[0].is_one());
 
     // pi(X) = fi(X) - ri(zeta)
     let ps: Vec<Poly<F>> = fs.iter().zip(rs_at_zeta)
@@ -76,7 +72,7 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
         l += (coeff, pi);
     }
 
-    let l = &l - &(&q * agg_z_at_zeta);
+    let l = &l - &(&q * normalizer);
     (l, zeta, qc)
 }
 
@@ -103,17 +99,6 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
     transcript.commit_to_q(&qc);
     let zeta = transcript.get_zeta();
 
-    let mut opening_set = HashSet::new();
-    for xs in claims.iter().map(|claim| &claim.xs) {
-        opening_set.extend(xs);
-    }
-
-    // Vanishing polynomial of the whole opening set evaluated at zeta
-    let agg_z_at_zeta = opening_set.iter()
-        .map(|x| zeta - x)
-        .reduce(|a, b| a * b)
-        .expect("TODO");
-
     // For each polynomial fi the opening claim {(xj, yj)} can be presented in polynomial form
     // as a pair of polynomials (ri, zi), where zi is the vanishing polynomial of the set {xj},
     // and ri is the interpolation polynomial of the set {(xj, yj)}.
@@ -121,6 +106,7 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
     let (rs_at_zeta, zs_at_zeta): (Vec<_>, Vec<_>) = claims.iter()
         .map(|MultipointClaim { c: _, xs, ys }| interpolate_evaluate(xs, ys, &zeta))
         .unzip();
+    let normalizer = zs_at_zeta[0];
 
     let mut zs_at_zeta_inv = zs_at_zeta;
     ark_ff::batch_inversion(&mut zs_at_zeta_inv);
@@ -128,8 +114,9 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
     // 1, gamma, ..., gamma^{k-1}
     let powers = crate::utils::powers(gamma, claims.len() - 1);
     let coeffs: Vec<F> = powers.iter().zip(zs_at_zeta_inv.iter())
-        .map(|(&gamma_i, zi_inv)| gamma_i * zi_inv * agg_z_at_zeta) // (gamma^i / z_i(zeta)) * agg_z(zeta)
+        .map(|(&gamma_i, zi_inv)| gamma_i * zi_inv * normalizer) // (gamma^i / z_i(zeta)) * agg_z(zeta)
         .collect();
+    assert!(coeffs[0].is_one());
 
     //TODO: multiexp
     let agg_c: CS::C = claims.iter().zip(coeffs.iter())
@@ -140,7 +127,7 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
         .map(|(ri_at_zeta, coeff)| ri_at_zeta * coeff)
         .sum();
 
-    let lc = agg_c - onec.mul(agg_r_at_zeta) - qc.mul(agg_z_at_zeta);
+    let lc = agg_c - onec.mul(agg_r_at_zeta) - qc.mul(normalizer);
     MultipointClaim { c: lc, xs: vec![zeta], ys: vec![F::zero()] }
 }
 
