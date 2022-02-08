@@ -28,42 +28,56 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
     transcript: &mut T,
 ) -> (Poly<F>, F, CS::C) {
     assert_eq!(xss.len(), fs.len(), "{} opening sets specified for {} polynomials", xss.len(), fs.len());
+
     let mut opening_set = HashSet::new();
     for xs in xss {
         opening_set.extend(xs);
     }
-    let z = crate::utils::z_of_set(&opening_set);
+    let agg_z = crate::utils::z_of_set(&opening_set);
 
+    // zi - vanishing polynomials of the set {xj} of opening points of fi
     let zs: Vec<_> = xss.iter()
         .map(|xs| crate::utils::z_of_set(xs))
         .collect();
 
-    let (qs, rs): (Vec<_>, Vec<_>) = fs.iter().zip(&zs)
+    // (qi, ri) - quotient and remainder from division of fi by the corresponding vanishing polynomial zi
+    // fi = qi * zi + ri
+    let (qs, rs): (Vec<_>, Vec<_>) = fs.iter().zip(zs.iter())
         .map(|(fi, zi)| fi.divide_with_q_and_r(zi))
         .unzip();
 
     let gamma = transcript.get_gamma();
     let q = crate::utils::randomize(gamma, &qs);
-    let q_comm = CS::commit(ck, &q);//scheme.commit(&q);
-    transcript.commit_to_q(&q_comm);
+    let qc = CS::commit(ck, &q);
+    transcript.commit_to_q(&qc);
     let zeta = transcript.get_zeta();
 
-    let z_zeta = z.evaluate(&zeta);
-    let mut zs_zeta: Vec<_> = zs.iter().map(|zi| zi.evaluate(&zeta)).collect();
-    let rs_zeta: Vec<_> = rs.iter().map(|ri| ri.evaluate(&zeta)).collect();
-    ark_ff::batch_inversion(&mut zs_zeta);
+    let agg_z_at_zeta = agg_z.evaluate(&zeta);
+    let zs_at_zeta: Vec<_> = zs.iter().map(|zi| zi.evaluate(&zeta)).collect();
+    let rs_at_zeta: Vec<_> = rs.iter().map(|ri| ri.evaluate(&zeta)).collect();
 
-    let gs = crate::utils::powers(gamma, fs.len() - 1);
+    let mut zs_at_zeta_inv = zs_at_zeta;
+    ark_ff::batch_inversion(&mut zs_at_zeta_inv);
+
+    // 1, gamma, ..., gamma^{k-1}
+    // Notice we already used gamma to compute the aggregate quotient q.
+    let powers = crate::utils::powers(gamma, fs.len() - 1);
+    let coeffs: Vec<F> = powers.iter().zip(zs_at_zeta_inv.iter())
+        .map(|(&gamma_i, zi_inv)| gamma_i * zi_inv * agg_z_at_zeta) // (gamma^i / z_i(zeta)) * agg_z(zeta)
+        .collect();
+
+    // pi(X) = fi(X) - ri(zeta)
+    let ps: Vec<Poly<F>> = fs.iter().zip(rs_at_zeta)
+        .map(|(fi, ri)| fi - &Poly::from_coefficients_vec(vec![ri])).
+        collect();
 
     let mut l = Poly::zero();
-    for (((fi, ri), zi_inv), gi) in fs.iter()
-        .zip(rs_zeta)
-        .zip(zs_zeta)
-        .zip(gs) {
-        l += (gi * zi_inv, &(fi - &Poly::from_coefficients_vec(vec![ri])));
+    for (coeff, pi) in coeffs.into_iter().zip(ps.iter()) {
+        l += (coeff, pi);
     }
-    let l = &(&l - &q) * z_zeta;
-    (l, zeta, q_comm)
+
+    let l = &l - &(&q * agg_z_at_zeta);
+    (l, zeta, qc)
 }
 
 pub fn group_by_commitment<F: PrimeField, C: Commitment<F>>(
@@ -100,10 +114,10 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
         .reduce(|a, b| a * b)
         .expect("TODO");
 
-    // For each polynomial the opening claim {(xi, yi)} can be presented in polynomial form
-    // as a pair of polynomials (r, z), where z is the vanishing polynomial of the set {xi},
-    // and r is the interpolation polynomial of the set {(xi, yi)}.
-    // rj(zeta), zj(zeta)
+    // For each polynomial fi the opening claim {(xj, yj)} can be presented in polynomial form
+    // as a pair of polynomials (ri, zi), where zi is the vanishing polynomial of the set {xj},
+    // and ri is the interpolation polynomial of the set {(xj, yj)}.
+    // ri(zeta), zi(zeta)
     let (rs_at_zeta, zs_at_zeta): (Vec<_>, Vec<_>) = claims.iter()
         .map(|MultipointClaim { c: _, xs, ys }| interpolate_evaluate(xs, ys, &zeta))
         .unzip();
@@ -114,7 +128,7 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
     // 1, gamma, ..., gamma^{k-1}
     let powers = crate::utils::powers(gamma, claims.len() - 1);
     let coeffs: Vec<F> = powers.iter().zip(zs_at_zeta_inv.iter())
-        .map(|(&gj, zj_inv)| gj * zj_inv * agg_z_at_zeta) // (g^j / z_j) * agg_z
+        .map(|(&gamma_i, zi_inv)| gamma_i * zi_inv * agg_z_at_zeta) // (gamma^i / z_i(zeta)) * agg_z(zeta)
         .collect();
 
     //TODO: multiexp
@@ -126,8 +140,8 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
         .map(|(ri_at_zeta, coeff)| ri_at_zeta * coeff)
         .sum();
 
-    let c = agg_c - onec.mul(agg_r_at_zeta) - qc.mul(agg_z_at_zeta);
-    MultipointClaim { c, xs: vec![zeta], ys: vec![F::zero()] }
+    let lc = agg_c - onec.mul(agg_r_at_zeta) - qc.mul(agg_z_at_zeta);
+    MultipointClaim { c: lc, xs: vec![zeta], ys: vec![F::zero()] }
 }
 
 
