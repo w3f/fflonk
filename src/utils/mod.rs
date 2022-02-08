@@ -1,3 +1,5 @@
+pub mod ec;
+
 use ark_ff::{FftField, Field};
 use ark_poly::{Polynomial, UVPolynomial};
 use ark_poly::univariate::DensePolynomial;
