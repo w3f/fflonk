@@ -15,7 +15,7 @@ fn small_multiexp_affine<E: PairingEngine>(c: &mut Criterion) {
     let exps_full = (0..n).map(|_| E::Fr::rand(rng)).collect::<Vec<_>>();
     let exps_128 = (0..n).map(|_| E::Fr::from(u128::rand(rng))).collect::<Vec<_>>();
 
-    let mut group = c.benchmark_group("msm");
+    let mut group = c.benchmark_group("small-multiexp-affine");
     group.bench_with_input(BenchmarkId::new("small-multiexp-full", n), &n, |b, _n| {
         b.iter(|| ec::small_multiexp_affine(&exps_full, &bases))
     });
@@ -31,9 +31,26 @@ fn small_multiexp_affine<E: PairingEngine>(c: &mut Criterion) {
     group.finish();
 }
 
+fn small_multiexp_proj<E: PairingEngine>(c: &mut Criterion) {
+    let rng = &mut test_rng();
+    let n = 10;
+
+    let bases = (0..n).map(|_| E::G1Projective::rand(rng)).collect::<Vec<_>>();
+    let exps_128 = (0..n).map(|_| E::Fr::from(u128::rand(rng))).collect::<Vec<_>>();
+
+    let mut group = c.benchmark_group("small-multiexp-proj");
+    group.bench_with_input(BenchmarkId::new("in_affine", n), &n, |b, _n| {
+        b.iter(|| ec::small_multiexp_proj(&exps_128, &bases))
+    });
+    group.bench_with_input(BenchmarkId::new("in-proj", n), &n, |b, _n| {
+        b.iter(|| ec::_small_multiexp_proj_2(&exps_128, &bases))
+    });
+    group.finish();
+}
 
 
 criterion_group!(benches,
     small_multiexp_affine::<ark_bw6_761::BW6_761>,
+    small_multiexp_proj::<ark_bw6_761::BW6_761>,
 );
 criterion_main!(benches);
