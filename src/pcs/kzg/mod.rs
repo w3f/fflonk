@@ -172,17 +172,19 @@ mod tests {
     fn random_openings<R: Rng, E: PairingEngine>(
         k: usize,
         ck: &KzgCommitterKey<E::G1Affine>,
+        xs: Vec<E::Fr>,
         rng: &mut R,
     ) -> Vec<KzgOpening<E>>
     {
+        assert_eq!(xs.len(), k);
         let d = ck.max_degree();
 
-        (0..k).map(|_| {
+        (0..k).map(|i| {
             let f = Poly::<E::Fr>::rand(d, rng);
-            let x = E::Fr::rand(rng);
+            let x = xs[i];
             let y = f.evaluate(&x);
-            let c =  KZG::<E>::commit(ck, &f).0.into_affine();
-            let proof =  KZG::<E>::open(ck, &f, x);
+            let c = KZG::<E>::commit(ck, &f).0.into_affine();
+            let proof = KZG::<E>::open(ck, &f, x);
             KzgOpening { c, x, y, proof }
         }).collect()
     }
@@ -195,13 +197,15 @@ mod tests {
         let urs = KZG::<E>::setup(max_degree, rng);
         let (ck, vk) = (urs.ck(), urs.vk());
 
-        let openings = random_openings(k, &ck, rng);
+        let xs = (0..k).map(|_| E::Fr::rand(rng)).collect();
+        let openings = random_openings(k, &ck, xs, rng);
+        let t_verify_batch = start_timer!(|| format!("Batch verification of {} openings of degree ~2^{} on {} with {}-bit xs", k, log_n, crate::utils::curve_name::<E>(), E::Fr::size_in_bits()));
+        assert!(KZG::<E>::verify_batch(openings, &vk, rng));
+        end_timer!(t_verify_batch);
 
-        let t_verify_single = start_timer!(|| format!("1-by-1 verification of {} openings of degree ~2^{} on {}", k, log_n, crate::utils::curve_name::<E>()));
-        assert!(openings.iter().cloned().all(|opening| KZG::<E>::verify_single(opening, &vk)));
-        end_timer!(t_verify_single);
-
-        let t_verify_batch = start_timer!(|| format!("Batch verification of {} openings of degree ~2^{} on {}", k, log_n, crate::utils::curve_name::<E>()));
+        let xs = (0..k).map(|_| E::Fr::from(u128::rand(rng))).collect();
+        let openings = random_openings(k, &ck, xs, rng);
+        let t_verify_batch = start_timer!(|| format!("Batch verification of {} openings of degree ~2^{} on {} with {}-bit xs", k, log_n, crate::utils::curve_name::<E>(), 128));
         assert!(KZG::<E>::verify_batch(openings, &vk, rng));
         end_timer!(t_verify_batch);
     }
