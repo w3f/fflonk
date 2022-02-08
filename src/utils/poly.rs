@@ -33,7 +33,9 @@ fn interpolate<F: PrimeField>(xs: &[F], ys: &[F]) -> Poly<F> {
     res
 }
 
-pub(crate) fn interpolate_evaluate<F: PrimeField>(xs: &[F], ys: &[F], zeta: &F) -> F {
+
+/// returns `r(zeta)` and `z(zeta)`, where `r` is the interpolting poly, and `z` is the vanishing poly. 
+pub(crate) fn interpolate_evaluate<F: PrimeField>(xs: &[F], ys: &[F], zeta: &F) -> (F, F) {
     assert_eq!(xs.len(), ys.len());
 
     let zeta_minus_xs = ark_std::iter::repeat(zeta).zip(xs.iter())
@@ -62,7 +64,8 @@ pub(crate) fn interpolate_evaluate<F: PrimeField>(xs: &[F], ys: &[F], zeta: &F) 
 
     ark_ff::batch_inversion(&mut denominator);
 
-    denominator.into_iter().zip(ys.iter()).map(|(a, b)| a * b).sum::<F>() * l_at_zeta
+    let sum = denominator.into_iter().zip(ys.iter()).map(|(a, b)| a * b).sum::<F>();
+    (sum * l_at_zeta, l_at_zeta)
 }
 
 #[cfg(test)]
@@ -72,6 +75,7 @@ mod tests {
     use crate::tests::TestField;
     use ark_ff::UniformRand;
     use ark_poly::Polynomial;
+    use crate::utils::z_of_set;
 
     #[test]
     fn test_interpolation() {
@@ -89,8 +93,9 @@ mod tests {
 
         for _ in 0..10 {
             let zeta = TestField::rand(rng);
-            let poly_at_zeta = interpolate_evaluate(&xs, &ys, &zeta);
-            assert_eq!(poly_at_zeta, poly.evaluate(&zeta));
+            let (r_at_zeta, z_at_zeta) = interpolate_evaluate(&xs, &ys, &zeta);
+            assert_eq!(r_at_zeta, poly.evaluate(&zeta));
+            assert_eq!(z_at_zeta, z_of_set(&xs).evaluate(&zeta));
         }
     }
 }

@@ -99,16 +99,9 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
         .reduce(|z, zi| z * zi)
         .unwrap();
 
-    let rs_at_zeta = claims.iter()
-        .map(|MultipointClaim { c: _, xs, ys }| interpolate_evaluate(xs, ys, &zeta));
-    // let rs_at_zeta = rs.map(|ri| ri.evaluate(&zeta));
-
-    let mut zs_at_zeta: Vec<F> = claims.iter().map(|claim|
-        claim.xs.iter()
-            .map(|xi| zeta - xi)
-            .reduce(|z, zi| z * zi)
-            .unwrap()
-    ).collect();
+    let (rs_at_zeta, mut zs_at_zeta): (Vec<_>, Vec<_>) = claims.iter()
+        .map(|MultipointClaim { c: _, xs, ys }| interpolate_evaluate(xs, ys, &zeta))
+        .unzip();
 
     ark_ff::batch_inversion(&mut zs_at_zeta);
 
@@ -121,7 +114,7 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
         .map(|(claim, &gzi)| claim.c.mul(z_at_zeta * gzi))
         .sum();
 
-    let r = rs_at_zeta.zip(gzs).map(|(ri_at_zeta, gzi)| ri_at_zeta * &gzi).sum::<F>() * z_at_zeta;
+    let r = rs_at_zeta.into_iter().zip(gzs).map(|(ri_at_zeta, gzi)| ri_at_zeta * gzi).sum::<F>() * z_at_zeta;
 
     let c = fc - onec.mul(r) - qc.mul(z_at_zeta);
     MultipointClaim { c, xs: vec![zeta], ys: vec![F::zero()] }
