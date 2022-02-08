@@ -94,11 +94,16 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
         opening_set.extend(xs);
     }
 
-    let z_at_zeta = opening_set.iter()
-        .map(|xi| zeta - xi)
-        .reduce(|z, zi| z * zi)
-        .unwrap();
+    // Vanishing polynomial of the whole opening set evaluated at zeta
+    let agg_z_at_zeta = opening_set.iter()
+        .map(|x| zeta - x)
+        .reduce(|a, b| a * b)
+        .expect("TODO");
 
+    // For each polynomial the opening claim {(xi, yi)} can be presented in polynomial form
+    // as a pair of polynomials (r, z), where z is the vanishing polynomial of the set {xi},
+    // and r is the interpolation polynomial of the set {(xi, yi)}.
+    // rj(zeta), zj(zeta)
     let (rs_at_zeta, zs_at_zeta): (Vec<_>, Vec<_>) = claims.iter()
         .map(|MultipointClaim { c: _, xs, ys }| interpolate_evaluate(xs, ys, &zeta))
         .unzip();
@@ -106,9 +111,10 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
     let mut zs_at_zeta_inv = zs_at_zeta;
     ark_ff::batch_inversion(&mut zs_at_zeta_inv);
 
+    // 1, gamma, ..., gamma^{k-1}
     let powers = crate::utils::powers(gamma, claims.len() - 1);
     let coeffs: Vec<F> = powers.iter().zip(zs_at_zeta_inv.iter())
-        .map(|(&gi, zi_inv)| gi * zi_inv * z_at_zeta)
+        .map(|(&gj, zj_inv)| gj * zj_inv * agg_z_at_zeta) // (g^j / z_j) * agg_z
         .collect();
 
     //TODO: multiexp
@@ -116,11 +122,11 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
         .map(|(claim, &coeff)| claim.c.mul(coeff))
         .sum();
 
-    let agg_r_at_zeta = rs_at_zeta.into_iter().zip(coeffs.iter())
+    let agg_r_at_zeta: F = rs_at_zeta.into_iter().zip(coeffs.iter())
         .map(|(ri_at_zeta, coeff)| ri_at_zeta * coeff)
-        .sum::<F>();
+        .sum();
 
-    let c = agg_c - onec.mul(agg_r_at_zeta) - qc.mul(z_at_zeta);
+    let c = agg_c - onec.mul(agg_r_at_zeta) - qc.mul(agg_z_at_zeta);
     MultipointClaim { c, xs: vec![zeta], ys: vec![F::zero()] }
 }
 
