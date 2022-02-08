@@ -58,7 +58,7 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
     let powers = crate::utils::powers(gamma, fs.len() - 1);
     assert!(powers[0].is_one());
     let coeffs: Vec<F> = powers.iter().zip(zs_at_zeta_inv.iter())
-        .map(|(&gamma_i, zi_inv)| gamma_i * zi_inv * normalizer) // (gamma^i / z_i(zeta)) * agg_z(zeta)
+        .map(|(&gamma_i, zi_inv)| gamma_i * zi_inv * normalizer) // (gamma^i / z_i(zeta)) * normalizer
         .collect();
     assert!(coeffs[0].is_one());
 
@@ -114,7 +114,7 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
     // 1, gamma, ..., gamma^{k-1}
     let powers = crate::utils::powers(gamma, claims.len() - 1);
     let coeffs: Vec<F> = powers.iter().zip(zs_at_zeta_inv.iter())
-        .map(|(&gamma_i, zi_inv)| gamma_i * zi_inv * normalizer) // (gamma^i / z_i(zeta)) * agg_z(zeta)
+        .map(|(&gamma_i, zi_inv)| gamma_i * zi_inv * normalizer) // (gamma^i / z_i(zeta)) * normalizer
         .collect();
     assert!(coeffs[0].is_one());
 
