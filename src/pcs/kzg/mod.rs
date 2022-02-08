@@ -23,9 +23,9 @@ pub struct KZG<E: PairingEngine> {
 
 /// e(acc, g2) = e(proof, tau.g2)
 #[derive(Clone, Debug)]
-struct AccumulatedOpening<E: PairingEngine> {
-    acc: E::G1Affine,
-    proof: E::G1Affine,
+pub struct AccumulatedOpening<E: PairingEngine> {
+    pub acc: E::G1Affine,
+    pub proof: E::G1Affine,
 }
 
 #[derive(Clone, Debug)]
@@ -55,12 +55,12 @@ impl<E: PairingEngine> KZG<E> {
         ).collect()
     }
 
-    fn accumulate(openings: Vec<KzgOpening<E>>, rs: &[E::Fr], g1: &E::G1Affine) -> AccumulatedOpening<E> {
+    pub fn accumulate(openings: Vec<KzgOpening<E>>, rs: &[E::Fr], vk: &KzgVerifierKey<E>) -> AccumulatedOpening<E> {
         assert_eq!(openings.len(), rs.len());
         let openings = Self::parse(openings);
         let ((accs, proofs), ys): ((Vec<E::G1Projective>, Vec<E::G1Affine>), Vec<E::Fr>) = openings.into_iter().unzip();
         let sum_ry = rs.iter().zip(ys.into_iter()).map(|(r, y)| y * r).sum::<E::Fr>();
-        let acc = g1.mul(sum_ry) - small_multiexp_proj(rs, &accs);
+        let acc = vk.g1.mul(sum_ry) - small_multiexp_proj(rs, &accs);
         let proof = small_multiexp_affine(rs, &proofs);
         let acc = acc.into_affine();
         let proof = proof.into_affine();
@@ -73,7 +73,7 @@ impl<E: PairingEngine> KZG<E> {
         AccumulatedOpening { acc, proof }
     }
 
-    fn verify_accumulated(opening: AccumulatedOpening<E>, vk: &KzgVerifierKey<E>) -> bool {
+    pub fn verify_accumulated(opening: AccumulatedOpening<E>, vk: &KzgVerifierKey<E>) -> bool {
         E::product_of_pairings(&[
             (opening.acc.into(), vk.g2.clone()),
             (opening.proof.into(), vk.tau_in_g2.clone()),
@@ -88,8 +88,8 @@ impl<E: PairingEngine> KZG<E> {
     pub fn verify_batch<R: Rng>(openings: Vec<KzgOpening<E>>, vk: &KzgVerifierKey<E>, rng: &mut R) -> bool {
         let one = std::iter::once(E::Fr::one());
         let coeffs: Vec<E::Fr> = one.chain((1..openings.len()).map(|_| u128::rand(rng).into())).collect();
-        let acc_opening = Self::accumulate(openings, &coeffs, &vk.g1);
-        Self::verify_accumulated(acc_opening, &vk)
+        let acc_opening = Self::accumulate(openings, &coeffs, vk);
+        Self::verify_accumulated(acc_opening, vk)
     }
 }
 
