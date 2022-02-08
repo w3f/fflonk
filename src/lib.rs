@@ -13,7 +13,7 @@ use crate::shplonk::Shplonk;
 pub mod shplonk;
 pub mod fflonk;
 pub mod pcs;
-mod utils;
+pub mod utils;
 mod aggregation;
 
 
