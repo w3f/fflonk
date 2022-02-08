@@ -15,7 +15,7 @@ use ark_ff::{PrimeField, One, UniformRand};
 use ark_ec::AffineCurve;
 
 use ark_std::rand::Rng;
-use crate::utils::{naive_multiexp_proj, naive_multiexp_affine};
+use crate::utils::ec::{small_multiexp_proj, small_multiexp_affine};
 
 pub struct KZG<E: PairingEngine> {
     _engine: PhantomData<E>,
@@ -60,9 +60,10 @@ impl<E: PairingEngine> KZG<E> {
         let openings = Self::parse(openings);
         let ((accs, proofs), ys): ((Vec<E::G1Projective>, Vec<E::G1Affine>), Vec<E::Fr>) = openings.into_iter().unzip();
         let sum_ry = rs.iter().zip(ys.into_iter()).map(|(r, y)| y * r).sum::<E::Fr>();
-        let acc = g1.mul(sum_ry) - naive_multiexp_proj(rs, &accs);
+        let acc = g1.mul(sum_ry) - small_multiexp_proj(rs, &accs);
+        let proof = small_multiexp_affine(rs, &proofs);
         let acc = acc.into_affine();
-        let proof = naive_multiexp_affine(rs, &proofs).into_affine();
+        let proof = proof.into_affine();
         AccumulatedOpening { acc, proof }
     }
 
