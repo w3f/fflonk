@@ -11,15 +11,30 @@ use crate::pcs::kzg::commitment::KzgCommitment;
 use crate::pcs::kzg::urs::URS;
 use ark_poly::{Polynomial, UVPolynomial};
 use ark_ec::msm::VariableBase;
-use ark_ff::{PrimeField, One};
+use ark_ff::{PrimeField, One, UniformRand};
 use ark_ec::AffineCurve;
 
 use ark_std::rand::Rng;
+use crate::utils::ec::{small_multiexp_proj, small_multiexp_affine};
 
 pub struct KZG<E: PairingEngine> {
     _engine: PhantomData<E>,
 }
 
+/// e(acc, g2) = e(proof, tau.g2)
+#[derive(Clone, Debug)]
+struct AccumulatedOpening<E: PairingEngine> {
+    acc: E::G1Affine,
+    proof: E::G1Affine,
+}
+
+#[derive(Clone, Debug)]
+pub struct KzgOpening<E: PairingEngine> {
+    c: E::G1Affine,
+    x: E::Fr,
+    y: E::Fr,
+    proof: E::G1Affine,
+}
 
 impl<E: PairingEngine> KZG<E> {
     fn z(x: E::Fr) -> Poly<E::Fr> {
@@ -34,8 +49,47 @@ impl<E: PairingEngine> KZG<E> {
         Self::q(p, &Self::z(x))
     }
 
-    fn opening(g1: &E::G1Affine, c: &E::G1Projective, x: E::Fr, z: E::Fr, proof: E::G1Affine) -> (E::G1Projective, E::G1Affine) {
-        (g1.mul(z) - c - proof.mul(x), proof)
+    fn parse(openings: Vec<KzgOpening<E>>) -> Vec<((E::G1Projective, E::G1Affine), E::Fr)> {
+        openings.into_iter().map(|KzgOpening { c, x, y, proof }|
+            ((proof.mul(x).add_mixed(&c), proof), y)
+        ).collect()
+    }
+
+    fn accumulate(openings: Vec<KzgOpening<E>>, rs: &[E::Fr], g1: &E::G1Affine) -> AccumulatedOpening<E> {
+        assert_eq!(openings.len(), rs.len());
+        let openings = Self::parse(openings);
+        let ((accs, proofs), ys): ((Vec<E::G1Projective>, Vec<E::G1Affine>), Vec<E::Fr>) = openings.into_iter().unzip();
+        let sum_ry = rs.iter().zip(ys.into_iter()).map(|(r, y)| y * r).sum::<E::Fr>();
+        let acc = g1.mul(sum_ry) - small_multiexp_proj(rs, &accs);
+        let proof = small_multiexp_affine(rs, &proofs);
+        let acc = acc.into_affine();
+        let proof = proof.into_affine();
+        AccumulatedOpening { acc, proof }
+    }
+
+    fn accumulate_single(opening: KzgOpening<E>, g1: &E::G1Affine) -> AccumulatedOpening<E> {
+        let KzgOpening { c, x, y, proof } = opening;
+        let acc = (g1.mul(y) - proof.mul(x).add_mixed(&c)).into_affine();
+        AccumulatedOpening { acc, proof }
+    }
+
+    fn verify_accumulated(opening: AccumulatedOpening<E>, vk: &KzgVerifierKey<E>) -> bool {
+        E::product_of_pairings(&[
+            (opening.acc.into(), vk.g2.clone()),
+            (opening.proof.into(), vk.tau_in_g2.clone()),
+        ]).is_one()
+    }
+
+    pub fn verify_single(opening: KzgOpening<E>, vk: &KzgVerifierKey<E>) -> bool {
+        let acc_opening = Self::accumulate_single(opening, &vk.g1);
+        Self::verify_accumulated(acc_opening, vk)
+    }
+
+    pub fn verify_batch<R: Rng>(openings: Vec<KzgOpening<E>>, vk: &KzgVerifierKey<E>, rng: &mut R) -> bool {
+        let one = std::iter::once(E::Fr::one());
+        let coeffs: Vec<E::Fr> = one.chain((1..openings.len()).map(|_| u128::rand(rng).into())).collect();
+        let acc_opening = Self::accumulate(openings, &coeffs, &vk.g1);
+        Self::verify_accumulated(acc_opening, &vk)
     }
 }
 
@@ -50,7 +104,6 @@ impl<E: PairingEngine> PCS<E::Fr> for KZG<E> {
     fn setup<R: Rng>(max_degree: usize, rng: &mut R) -> Self::Params {
         URS::<E>::generate(max_degree + 1, 2, rng)
     }
-
 
     fn commit(ck: &KzgCommitterKey<E::G1Affine>, p: &Poly<E::Fr>) -> Self::C {
         assert!(p.degree() <= ck.max_degree(), "Can't commit to degree {} polynomial using {} bases", p.degree(), ck.powers_in_g1.len());
@@ -69,12 +122,10 @@ impl<E: PairingEngine> PCS<E::Fr> for KZG<E> {
         Self::commit(ck, &q).0.into_affine()
     }
 
-    fn verify(vk: &KzgVerifierKey<E>, c: Self::C, x: E::Fr, z: E::Fr, proof: Self::Proof) -> bool {
-        let (agg, proof) = Self::opening(&vk.g1, &c.0, x, z, proof);
-        E::product_of_pairings(&[
-            (agg.into_affine().into(), vk.g2.clone()),
-            (proof.into(), vk.tau_in_g2.clone()),
-        ]).is_one()
+    fn verify(vk: &KzgVerifierKey<E>, c: Self::C, x: E::Fr, y: E::Fr, proof: Self::Proof) -> bool {
+        let c = c.0.into_affine();
+        let opening = KzgOpening { c, x, y, proof };
+        Self::verify_single(opening, vk)
     }
 }
 
@@ -93,8 +144,9 @@ mod tests {
     fn _test_minimal_kzg<E: PairingEngine>(log_n: usize) {
         let rng = &mut test_rng();
 
-        let t_setup = start_timer!(|| format!("KZG setup of size 2^{} on {}", log_n, curve_name::<E>()));
         let max_degree = (1 << log_n) - 1;
+
+        let t_setup = start_timer!(|| format!("KZG setup of size 2^{} on {}", log_n, curve_name::<E>()));
         let urs = KZG::<E>::setup(max_degree, rng);
         end_timer!(t_setup);
 
@@ -118,6 +170,47 @@ mod tests {
         end_timer!(t_verify);
     }
 
+    fn random_openings<R: Rng, E: PairingEngine>(
+        k: usize,
+        ck: &KzgCommitterKey<E::G1Affine>,
+        xs: Vec<E::Fr>,
+        rng: &mut R,
+    ) -> Vec<KzgOpening<E>>
+    {
+        assert_eq!(xs.len(), k);
+        let d = ck.max_degree();
+
+        (0..k).map(|i| {
+            let f = Poly::<E::Fr>::rand(d, rng);
+            let x = xs[i];
+            let y = f.evaluate(&x);
+            let c = KZG::<E>::commit(ck, &f).0.into_affine();
+            let proof = KZG::<E>::open(ck, &f, x);
+            KzgOpening { c, x, y, proof }
+        }).collect()
+    }
+
+    fn _test_batch_verification<E: PairingEngine>(log_n: usize, k: usize) {
+        let rng = &mut test_rng();
+
+        let max_degree = (1 << log_n) - 1;
+
+        let urs = KZG::<E>::setup(max_degree, rng);
+        let (ck, vk) = (urs.ck(), urs.vk());
+
+        let xs = (0..k).map(|_| E::Fr::rand(rng)).collect();
+        let openings = random_openings(k, &ck, xs, rng);
+        let t_verify_batch = start_timer!(|| format!("Batch verification of {} openings of degree ~2^{} on {} with {}-bit xs", k, log_n, crate::utils::curve_name::<E>(), E::Fr::size_in_bits()));
+        assert!(KZG::<E>::verify_batch(openings, &vk, rng));
+        end_timer!(t_verify_batch);
+
+        let xs = (0..k).map(|_| E::Fr::from(u128::rand(rng))).collect();
+        let openings = random_openings(k, &ck, xs, rng);
+        let t_verify_batch = start_timer!(|| format!("Batch verification of {} openings of degree ~2^{} on {} with {}-bit xs", k, log_n, crate::utils::curve_name::<E>(), 128));
+        assert!(KZG::<E>::verify_batch(openings, &vk, rng));
+        end_timer!(t_verify_batch);
+    }
+
     #[test]
     fn test_minimal_kzg() {
         _test_minimal_kzg::<BW6_761>(8);
@@ -127,5 +220,16 @@ mod tests {
     #[ignore]
     fn bench_minimal_kzg() {
         _test_minimal_kzg::<BW6_761>(16);
+    }
+
+    #[test]
+    fn test_batch_verification() {
+        _test_batch_verification::<BW6_761>(8, 5);
+    }
+
+    #[test]
+    #[ignore]
+    fn bench_batch_verification() {
+        _test_batch_verification::<BW6_761>(12, 5);
     }
 }
