@@ -99,29 +99,30 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
         .reduce(|z, zi| z * zi)
         .unwrap();
 
-    let (rs_at_zeta, mut zs_at_zeta): (Vec<_>, Vec<_>) = claims.iter()
+    let (rs_at_zeta, zs_at_zeta): (Vec<_>, Vec<_>) = claims.iter()
         .map(|MultipointClaim { c: _, xs, ys }| interpolate_evaluate(xs, ys, &zeta))
         .unzip();
 
-    ark_ff::batch_inversion(&mut zs_at_zeta);
+    let mut zs_at_zeta_inv = zs_at_zeta;
+    ark_ff::batch_inversion(&mut zs_at_zeta_inv);
 
-    let gs = crate::utils::powers(gamma, claims.len() - 1);
-    assert_eq!(gs.len(), zs_at_zeta.len());
-    let gzs: Vec<F> = gs.iter().zip(zs_at_zeta.iter()).map(|(&gi, zi_inv)| gi * zi_inv).collect();
-    assert_eq!(claims.len(), gzs.len());
+    let powers = crate::utils::powers(gamma, claims.len() - 1);
+    let coeffs: Vec<F> = powers.iter().zip(zs_at_zeta_inv.iter())
+        .map(|(&gi, zi_inv)| gi * zi_inv * z_at_zeta)
+        .collect();
 
-    let fc: CS::C = claims.iter().zip(gzs.iter())
-        .map(|(claim, &gzi)| claim.c.mul(z_at_zeta * gzi))
+    //TODO: multiexp
+    let agg_c: CS::C = claims.iter().zip(coeffs.iter())
+        .map(|(claim, &coeff)| claim.c.mul(coeff))
         .sum();
 
-    let r = rs_at_zeta.into_iter().zip(gzs).map(|(ri_at_zeta, gzi)| ri_at_zeta * gzi).sum::<F>() * z_at_zeta;
+    let agg_r_at_zeta = rs_at_zeta.into_iter().zip(coeffs.iter())
+        .map(|(ri_at_zeta, coeff)| ri_at_zeta * coeff)
+        .sum::<F>();
 
-    let c = fc - onec.mul(r) - qc.mul(z_at_zeta);
+    let c = agg_c - onec.mul(agg_r_at_zeta) - qc.mul(z_at_zeta);
     MultipointClaim { c, xs: vec![zeta], ys: vec![F::zero()] }
 }
-
-
-
 
 
 #[cfg(test)]
