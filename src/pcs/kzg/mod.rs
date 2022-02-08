@@ -62,6 +62,7 @@ impl<E: PairingEngine> KZG<E> {
         let sum_ry = rs.iter().zip(ys.into_iter()).map(|(r, y)| y * r).sum::<E::Fr>();
         let acc = vk.g1.mul(sum_ry) - small_multiexp_proj(rs, &accs);
         let proof = small_multiexp_affine(rs, &proofs);
+        E::G1Projective::batch_normalization(&mut [acc, proof]);
         let acc = acc.into_affine();
         let proof = proof.into_affine();
         AccumulatedOpening { acc, proof }
