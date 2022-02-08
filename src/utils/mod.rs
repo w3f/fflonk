@@ -1,7 +1,8 @@
-use ark_ff::{FftField, Field, PrimeField};
+pub mod ec;
+
+use ark_ff::{FftField, Field};
 use ark_poly::{Polynomial, UVPolynomial};
 use ark_poly::univariate::DensePolynomial;
-use ark_ec::{ProjectiveCurve, AffineCurve};
 
 /// (max_exp+1)-sized vec: 1, base, base^2,... ,base^{max_exp}
 pub fn powers<F: Field>(base: F, max_exp: usize) -> Vec<F> {
@@ -48,14 +49,6 @@ pub fn z_of_set<'a, F: FftField>(xs: impl IntoIterator<Item=&'a F>) -> DensePoly
         .map(|xi| z_of_point(xi))
         .reduce(|p, pi| &p * &pi)
         .unwrap()
-}
-
-pub fn naive_multiexp_affine<G: AffineCurve>(coeffs: &[G::ScalarField], bases: &[G]) -> G::Projective {
-    bases.iter().zip(coeffs.iter()).map(|(b, &c)| b.mul(c)).sum()
-}
-
-pub fn naive_multiexp_proj<G: ProjectiveCurve>(coeffs: &[G::ScalarField], bases: &[G]) -> G {
-    bases.iter().zip(coeffs.iter()).map(|(b, &c)| b.mul(c.into_repr())).sum()
 }
 
 #[cfg(test)]
