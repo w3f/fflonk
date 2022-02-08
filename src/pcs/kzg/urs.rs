@@ -11,7 +11,7 @@ use ark_std::{end_timer, start_timer};
 
 
 /// Updatable Universal References String
-#[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 // The bases are presented in affine as ark_ec::msm::VariableBaseMSM, though does double-and-add in projective, still enjoys mixed addition,
 // and Celo's https://github.com/celo-org/zexe/blob/master/algebra-core/src/curves/batch_arith.rs uses affine ops followed with with batch inversions.
 // See https://github.com/arkworks-rs/algebra/issues/60

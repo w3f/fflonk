@@ -1,5 +1,5 @@
-mod urs;
-mod params;
+pub mod urs;
+pub mod params;
 mod commitment;
 
 use ark_ec::{PairingEngine, ProjectiveCurve};
@@ -30,10 +30,10 @@ struct AccumulatedOpening<E: PairingEngine> {
 
 #[derive(Clone, Debug)]
 pub struct KzgOpening<E: PairingEngine> {
-    c: E::G1Affine,
-    x: E::Fr,
-    y: E::Fr,
-    proof: E::G1Affine,
+    pub c: E::G1Affine,
+    pub x: E::Fr,
+    pub y: E::Fr,
+    pub proof: E::G1Affine,
 }
 
 impl<E: PairingEngine> KZG<E> {

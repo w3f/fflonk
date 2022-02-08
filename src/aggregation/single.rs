@@ -2,6 +2,8 @@ use ark_ff::{PrimeField, Zero};
 use crate::pcs::{Commitment, PCS};
 use crate::Poly;
 use ark_poly::Polynomial;
+use crate::utils::ec::small_multiexp_affine;
+use ark_ec::{AffineCurve, ProjectiveCurve};
 
 /// A tuple (c, x, y) of the form (G, F, F). Represents a claim that {f(x) = y, for a polynomial f such that commit(f) = c}.
 /// In other words, it is am instance in some language of "correct polynomial evaluations".
@@ -55,8 +57,22 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>>(claims: &[Claim<F, CS::C>], r
     }
 }
 
+pub fn aggregate_claims_multiexp<F, C>(cs: Vec<C>, ys: Vec<F>, rs: &[F]) -> (C, F)
+    where
+        F: PrimeField,
+        C: AffineCurve<ScalarField=F>
+{
+    assert_eq!(cs.len(), rs.len());
+    assert_eq!(ys.len(), rs.len());
+
+    let agg_c = small_multiexp_affine(rs, &cs);
+    let agg_y = ys.into_iter().zip(rs.iter()).map(|(y, r)| y * r).sum();
+
+    (agg_c.into_affine(), agg_y)
+}
+
 // for opening in a single point, the aggregate polynomial doesn't depend on the point.
-fn aggregate_polys<F: PrimeField>(polys: &[Poly<F>], rs: &[F]) -> Poly<F> {
+pub fn aggregate_polys<F: PrimeField>(polys: &[Poly<F>], rs: &[F]) -> Poly<F> {
     assert_eq!(polys.len(), rs.len());
     polys.iter().zip(rs.iter())
         .map(|(p, &r)| p * r)

@@ -8,7 +8,7 @@ use ark_serialize::*;
 
 impl<E: PairingEngine> URS<E> {
     /// Non-prepared verifier key. Can be used for serialization.
-    pub fn raw_rk(&self) -> RawKzgVerifierKey<E> {
+    pub fn raw_vk(&self) -> RawKzgVerifierKey<E> {
         assert!(self.powers_in_g1.len() > 0, "no G1 generator");
         assert!(self.powers_in_g2.len() > 1, "{} powers in G2", self.powers_in_g2.len());
 
@@ -28,7 +28,7 @@ impl<E: PairingEngine> PcsParams<KzgCommitterKey<E::G1Affine>, KzgVerifierKey<E>
     }
 
     fn vk(&self) -> KzgVerifierKey<E> {
-        self.raw_rk().prepare()
+        self.raw_vk().prepare()
     }
 }
 
