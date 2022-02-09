@@ -74,7 +74,7 @@ fn get_coeffs<F: PrimeField>(zs_at_zeta: Vec<F>, gamma: F) -> (Vec<F>, F) {
     let mut zs_at_zeta_inv = zs_at_zeta;
     ark_ff::batch_inversion(&mut zs_at_zeta_inv);
 
-    let coeffs = zs_at_zeta_inv.iter().zip(utils::powers_inf(gamma))
+    let coeffs = zs_at_zeta_inv.iter().zip(utils::powers(gamma))
         .map(|(zi_inv, gamma_to_i)| gamma_to_i * zi_inv * normalizer)
         .collect();
 

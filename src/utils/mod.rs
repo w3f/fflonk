@@ -6,7 +6,7 @@ use ark_poly::{Polynomial, UVPolynomial};
 use ark_poly::univariate::DensePolynomial;
 
 
-pub fn powers_inf<F: Field>(base: F) -> impl Iterator<Item=F> {
+pub fn powers<F: Field>(base: F) -> impl Iterator<Item=F> {
     ark_std::iter::successors(Some(F::one()), move |power| Some(base * power))
 }
 
@@ -20,7 +20,7 @@ pub fn randomize<P, F>(
         P: Polynomial<F> {
 
     let mut res = P::zero();
-    polys.iter().zip(powers_inf(r)).for_each(|(p, power_of_r)| {
+    polys.iter().zip(powers(r)).for_each(|(p, power_of_r)| {
         res += (power_of_r, p);
     });
     res

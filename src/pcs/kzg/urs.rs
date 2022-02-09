@@ -47,7 +47,7 @@ impl<E: PairingEngine> URS<E> {
 
         let t_powers = start_timer!(|| format!("Computing {} scalars powers", n));
         // tau^0, ..., tau^(n-1))
-        let powers_of_tau: Vec<E::Fr> = utils::powers_inf(tau).take(n).collect();
+        let powers_of_tau: Vec<E::Fr> = utils::powers(tau).take(n).collect();
         end_timer!(t_powers);
 
         let g1 = E::G1Projective::rand(rng);
