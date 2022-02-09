@@ -38,7 +38,6 @@ pub struct FflonkyKzg<F: PrimeField, CS: PCS<F>> {
 }
 
 impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
-
     pub fn setup<R: Rng>(max_degree: usize, rng: &mut R) -> CS::Params {
         CS::setup(max_degree, rng)
     }
@@ -129,7 +128,13 @@ mod tests {
     use super::*;
     use ark_ec::PairingEngine;
 
-    pub(crate) type TestCurve = ark_bw6_761::BW6_761;
+    pub(crate) type BenchCurve = ark_bw6_761::BW6_761;
+    pub(crate) type BenchField = <BenchCurve as PairingEngine>::Fr;
+
+    #[allow(dead_code)] // used by ignored tests
+    pub(crate) type BenchKzg = KZG::<BenchCurve>;
+
+    pub(crate) type TestCurve = ark_bls12_381::Bls12_381;
     pub(crate) type TestField = <TestCurve as PairingEngine>::Fr;
     pub(crate) type TestKzg = KZG::<TestCurve>;
 
@@ -222,22 +227,14 @@ mod tests {
     }
 
     #[test]
-    fn test_fflonk_single_id() {
+    fn test_fflonk_single() {
         _test_fflonk_single::<TestField, IdentityCommitment>();
-    }
-
-    #[test]
-    fn test_fflonk_single_kzg() {
         _test_fflonk_single::<TestField, TestKzg>();
     }
 
     #[test]
-    fn test_fflonk_id() {
+    fn test_fflonk() {
         _test_fflonk::<TestField, IdentityCommitment>();
-    }
-
-    #[test]
-    fn test_fflonk_kzg() {
         _test_fflonk::<TestField, TestKzg>();
     }
 }

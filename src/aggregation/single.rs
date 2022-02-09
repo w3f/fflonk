@@ -87,7 +87,7 @@ mod tests {
     use ark_poly::UVPolynomial;
     use crate::pcs::PcsParams;
     use crate::pcs::tests::IdentityCommitment;
-    use crate::tests::{TestField, TestKzg};
+    use crate::tests::{TestKzg, TestField};
 
 
     fn _test_aggregation<F: PrimeField, CS: PCS<F>>() {
@@ -118,12 +118,8 @@ mod tests {
     }
 
     #[test]
-    fn test_aggregation_id() {
+    fn test_aggregation() {
         _test_aggregation::<TestField, IdentityCommitment>();
-    }
-
-    #[test]
-    fn test_aggregation_kzg() {
         _test_aggregation::<TestField, TestKzg>();
     }
 }

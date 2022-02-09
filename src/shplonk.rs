@@ -56,7 +56,7 @@ pub(crate) mod tests {
     use crate::Poly;
 
     use super::*;
-    use crate::tests::{TestKzg, TestField};
+    use crate::tests::{TestField, TestKzg};
 
     pub struct TestOpening<F: PrimeField, C: Commitment<F>> {
         pub fs: Vec<Poly<F>>,
@@ -132,12 +132,8 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn test_shplonk_id() {
+    fn test_shplonk() {
         _test_shplonk::<TestField, IdentityCommitment>();
-    }
-
-    #[test]
-    fn test_shplonk_kzg() {
         _test_shplonk::<TestField, TestKzg>();
     }
 }

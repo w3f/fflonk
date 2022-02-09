@@ -136,7 +136,7 @@ mod tests {
     use crate::shplonk::tests::{random_xss, random_opening};
     use crate::pcs::PcsParams;
     use ark_std::iter::FromIterator;
-    use crate::tests::{TestKzg, TestField};
+    use crate::tests::{TestField, TestKzg};
     use ark_ff::{UniformRand, One};
 
 
@@ -195,12 +195,8 @@ mod tests {
     }
 
     #[test]
-    fn test_aggregation_id() {
+    fn test_aggregation() {
         _test_aggregation::<TestField, IdentityCommitment>();
-    }
-
-    #[test]
-    fn test_aggregation_kzg() {
         _test_aggregation::<TestField, TestKzg>();
     }
 }

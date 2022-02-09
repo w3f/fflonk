@@ -72,7 +72,7 @@ pub(crate) fn interpolate_evaluate<F: PrimeField>(xs: &[F], ys: &[F], zeta: &F) 
 mod tests {
     use super::*;
     use ark_std::test_rng;
-    use crate::tests::TestField;
+    use crate::tests::BenchField;
     use ark_ff::UniformRand;
     use ark_poly::Polynomial;
     use crate::utils::z_of_set;
@@ -83,7 +83,7 @@ mod tests {
 
         let d = 15;
         let (xs, ys): (Vec<_>, Vec<_>) = (0..d + 1)
-            .map(|_| (TestField::rand(rng), TestField::rand(rng)))
+            .map(|_| (BenchField::rand(rng), BenchField::rand(rng)))
             .unzip();
 
         let poly = interpolate(&xs, &ys);
@@ -92,7 +92,7 @@ mod tests {
         assert!(xs.iter().zip(ys.iter()).all(|(x, &y)| poly.evaluate(x) == y));
 
         for _ in 0..10 {
-            let zeta = TestField::rand(rng);
+            let zeta = BenchField::rand(rng);
             let (r_at_zeta, z_at_zeta) = interpolate_evaluate(&xs, &ys, &zeta);
             assert_eq!(r_at_zeta, poly.evaluate(&zeta));
             assert_eq!(z_at_zeta, z_of_set(&xs).evaluate(&zeta));

@@ -60,3 +60,5 @@ pub fn _small_multiexp_proj_2<G: ProjectiveCurve>(coeffs: &[G::ScalarField], bas
 
     acc
 }
+
+//TODO: test

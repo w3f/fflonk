@@ -133,21 +133,20 @@ impl<E: PairingEngine> PCS<E::Fr> for KZG<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ark_bw6_761::BW6_761;
     use ark_std::test_rng;
     use crate::pcs::PcsParams;
-    use crate::utils::curve_name;
     use ark_poly::UVPolynomial;
     use ark_ff::UniformRand;
 
     use ark_std::{end_timer, start_timer};
+    use crate::tests::{BenchCurve, TestCurve};
 
     fn _test_minimal_kzg<E: PairingEngine>(log_n: usize) {
         let rng = &mut test_rng();
 
         let max_degree = (1 << log_n) - 1;
 
-        let t_setup = start_timer!(|| format!("KZG setup of size 2^{} on {}", log_n, curve_name::<E>()));
+        let t_setup = start_timer!(|| format!("KZG setup of size 2^{} on {}", log_n, use crate::utils::curve_name::<E>()));
         let urs = KZG::<E>::setup(max_degree, rng);
         end_timer!(t_setup);
 
@@ -214,23 +213,23 @@ mod tests {
 
     #[test]
     fn test_minimal_kzg() {
-        _test_minimal_kzg::<BW6_761>(8);
+        _test_minimal_kzg::<TestCurve>(8);
     }
 
     #[test]
     #[ignore]
     fn bench_minimal_kzg() {
-        _test_minimal_kzg::<BW6_761>(16);
+        _test_minimal_kzg::<BenchCurve>(16);
     }
 
     #[test]
     fn test_batch_verification() {
-        _test_batch_verification::<BW6_761>(8, 5);
+        _test_batch_verification::<TestCurve>(8, 4);
     }
 
     #[test]
     #[ignore]
     fn bench_batch_verification() {
-        _test_batch_verification::<BW6_761>(12, 5);
+        _test_batch_verification::<BenchCurve>(12, 5);
     }
 }
