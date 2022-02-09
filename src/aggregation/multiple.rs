@@ -2,12 +2,12 @@ use std::collections::HashSet;
 
 use ark_ff::PrimeField;
 use ark_poly::Polynomial;
+use ark_std::iterable::Iterable;
 
 use crate::{EuclideanPolynomial, Poly, utils};
 use crate::pcs::{Commitment, PCS};
-use ark_std::iterable::Iterable;
-use crate::utils::poly::interpolate_evaluate;
 use crate::utils::poly;
+use crate::utils::poly::interpolate_evaluate;
 
 pub struct MultipointClaim<F: PrimeField, C: Commitment<F>> {
     pub c: C,
@@ -29,7 +29,7 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
     transcript: &mut T,
 ) -> (Poly<F>, F, CS::C) {
     assert_eq!(xss.len(), fs.len(), "{} opening sets specified for {} polynomials", xss.len(), fs.len());
-    // Both Halo-inf and fflonk/shplonk use the notation "complement" in set-theoretical sense to that is used in the code.
+    // Both Halo-inf and fflonk/shplonk use the notation "complement" in set-theoretical sense to that used in the code.
     // The papers consider vanishing polynomials of the complements of the opening sets,
     // while in the code vanishing polynomials of the opening sets are used directly.
     // Comments bellow bridge notation between the code and the papers to explain that the code is equivalent
@@ -37,7 +37,7 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
 
     // zi - the vanishing polynomial of the set xsi ("Si" in the paper) of the opening points for fi, i = 0,...,k-1
     let zs: Vec<_> = xss.iter()
-        .map(|xsi| utils::z_of_set(xsi))
+        .map(|xsi| poly::z_of_set(xsi))
         .collect();
     // The paper defines "T" as the set of all the opening points, "Z_T", it's vanishing polynomial,
     // and "Z_{T\S_i}" as the vanishing polynomial of the complement of "Si" in "T".
@@ -150,15 +150,16 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use ark_std::test_rng;
-    use crate::pcs::tests::IdentityCommitment;
-    use crate::shplonk::tests::{random_xss, random_opening};
-    use crate::pcs::PcsParams;
+    use ark_ff::{One, UniformRand};
     use ark_std::iter::FromIterator;
-    use crate::tests::{TestField, TestKzg};
-    use ark_ff::{UniformRand, One};
+    use ark_std::test_rng;
 
+    use crate::pcs::PcsParams;
+    use crate::pcs::tests::IdentityCommitment;
+    use crate::shplonk::tests::{random_opening, random_xss};
+    use crate::tests::{TestField, TestKzg};
+
+    use super::*;
 
     impl<F: PrimeField, G> Transcript<F, G> for (F, F) {
         fn get_gamma(&mut self) -> F { self.0 }

@@ -1,11 +1,33 @@
-use ark_ff::{PrimeField, Zero, Field};
+use ark_ff::{FftField, Field, PrimeField, Zero};
+use ark_poly::{Polynomial, UVPolynomial};
+use ark_poly::polynomial::univariate::DensePolynomial;
+
 use crate::Poly;
-use ark_poly::{UVPolynomial, Polynomial};
 use crate::utils::powers;
 
+
+/// Field element represented as a constant polynomial.
 pub(crate) fn constant<F: PrimeField>(c: F) -> Poly<F> {
     Poly::from_coefficients_vec(vec![c])
 }
+
+
+/// The vanishing polynomial of a point x.
+/// z(X) = X - x
+pub(crate) fn z_of_point<F: Field>(x: &F) -> Poly<F> {
+    Poly::from_coefficients_vec(vec![x.neg(), F::one()])
+}
+
+
+/// The vanishing polynomial of a set.
+/// z(X) = (X - x1) * .. * (X - xn)
+pub(crate) fn z_of_set<'a, F: FftField>(xs: impl IntoIterator<Item=&'a F>) -> DensePolynomial<F> {
+    xs.into_iter()
+        .map(|x| z_of_point(x))
+        .reduce(|a, b| &a * &b)
+        .unwrap()
+}
+
 
 pub(crate) fn sum_with_coeffs<F: Field, P: Polynomial<F>>(
     coeffs: Vec<F>,
@@ -19,6 +41,7 @@ pub(crate) fn sum_with_coeffs<F: Field, P: Polynomial<F>>(
     res
 }
 
+
 pub(crate) fn sum_with_powers<F: Field, P: Polynomial<F>>(
     r: F,
     polys: &[P],
@@ -27,11 +50,12 @@ pub(crate) fn sum_with_powers<F: Field, P: Polynomial<F>>(
     sum_with_coeffs(powers, polys)
 }
 
+
 fn interpolate<F: PrimeField>(xs: &[F], ys: &[F]) -> Poly<F> {
     let x1 = xs[0];
-    let mut l = crate::utils::z_of_point(&x1);
+    let mut l = z_of_point(&x1);
     for &xj in xs.iter().skip(1) {
-        let q = crate::utils::z_of_point(&xj);
+        let q = z_of_point(&xj);
         l = &l * &q;
     }
 
@@ -50,7 +74,7 @@ fn interpolate<F: PrimeField>(xs: &[F], ys: &[F]) -> Poly<F> {
 
     let mut res = Poly::zero();
     for ((&wi, &xi), &yi) in ws.iter().zip(xs).zip(ys) {
-        let d = crate::utils::z_of_point(&xi);
+        let d = z_of_point(&xi);
         let mut z = &l / &d;
         z = &z * wi;
         z = &z * yi;
@@ -60,7 +84,12 @@ fn interpolate<F: PrimeField>(xs: &[F], ys: &[F]) -> Poly<F> {
 }
 
 
-/// returns `r(zeta)` and `z(zeta)`, where `r` is the interpolting poly, and `z` is the vanishing poly. 
+/// Given a polynomial `r` in evaluation form {(xi, yi)},
+/// i.e. lowest degree `r` such that `r(xi) = yi` for all `i`s,
+/// and a point zeta,
+/// computes `r(zeta)` and `z(zeta)`,
+/// where `z` is the vanishing polynomial of `x`s.
+// Implements barycentric formula of some form.
 pub(crate) fn interpolate_evaluate<F: PrimeField>(xs: &[F], ys: &[F], zeta: &F) -> (F, F) {
     assert_eq!(xs.len(), ys.len());
 
@@ -96,12 +125,14 @@ pub(crate) fn interpolate_evaluate<F: PrimeField>(xs: &[F], ys: &[F], zeta: &F) 
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use ark_std::test_rng;
-    use crate::tests::BenchField;
     use ark_ff::UniformRand;
     use ark_poly::Polynomial;
-    use crate::utils::z_of_set;
+    use ark_std::test_rng;
+
+    use crate::tests::BenchField;
+    use crate::utils::poly::z_of_set;
+
+    use super::*;
 
     #[test]
     fn test_interpolation() {

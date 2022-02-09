@@ -47,12 +47,6 @@ impl<F: FftField, P: UVPolynomial<F>> Fflonk<F, P>
         res
     }
 
-    // The vanishing polynomial of a point x.
-    // Z(X) = X - x
-    fn z_of_x(x: F) -> P {
-        P::from_coefficients_vec(vec![-x, F::one()])
-    }
-
     // The vanishing polynomial of the set of all the t-th roots of x,
     // given any of its t-th roots.
     // Z(x) = X^t-x
