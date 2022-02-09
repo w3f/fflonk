@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use ark_ff::{PrimeField, Zero};
 use ark_poly::{Polynomial, UVPolynomial};
 
-use crate::{EuclideanPolynomial, Poly};
+use crate::{EuclideanPolynomial, Poly, utils};
 use crate::pcs::{Commitment, PCS};
 use ark_std::iterable::Iterable;
 use crate::utils::poly::interpolate_evaluate;
@@ -31,7 +31,7 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
 
     // zi - vanishing polynomials of the set {xj} of opening points of fi
     let zs: Vec<_> = xss.iter()
-        .map(|xs| crate::utils::z_of_set(xs))
+        .map(|xs| utils::z_of_set(xs))
         .collect();
 
     // (qi, ri) - quotient and remainder from division of fi by the corresponding vanishing polynomial zi
@@ -41,26 +41,16 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
         .unzip();
 
     let gamma = transcript.get_gamma();
-    let q = crate::utils::randomize(gamma, &qs);
+    let q = utils::randomize(gamma, &qs);
     let qc = CS::commit(ck, &q);
     transcript.commit_to_q(&qc);
     let zeta = transcript.get_zeta();
 
     let rs_at_zeta: Vec<_> = rs.iter().map(|ri| ri.evaluate(&zeta)).collect();
     let zs_at_zeta: Vec<_> = zs.iter().map(|zi| zi.evaluate(&zeta)).collect();
-    let normalizer = zs_at_zeta[0];
 
-    let mut zs_at_zeta_inv = zs_at_zeta;
-    ark_ff::batch_inversion(&mut zs_at_zeta_inv);
-
-    // 1, gamma, ..., gamma^{k-1}
     // Notice we already used gamma to compute the aggregate quotient q.
-    let powers = crate::utils::powers(gamma, fs.len() - 1);
-    assert!(powers[0].is_one());
-    let coeffs: Vec<F> = powers.iter().zip(zs_at_zeta_inv.iter())
-        .map(|(&gamma_i, zi_inv)| gamma_i * zi_inv * normalizer) // (gamma^i / z_i(zeta)) * normalizer
-        .collect();
-    assert!(coeffs[0].is_one());
+    let (coeffs, normalizer) = coeffs(zs_at_zeta, gamma);
 
     // pi(X) = fi(X) - ri(zeta)
     let ps: Vec<Poly<F>> = fs.iter().zip(rs_at_zeta)
@@ -74,6 +64,23 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
 
     let l = &l - &(&q * normalizer);
     (l, zeta, qc)
+}
+
+/// Takes evaluations of vanishing polynomials at a random point `zeta`, and a random challenge `gamma`,
+/// and returns coefficients for the random linear combination of polynomials/commitments.
+fn coeffs<F: PrimeField>(zs_at_zeta: Vec<F>, gamma: F) -> (Vec<F>, F) {
+    //TODO
+    let normalizer = zs_at_zeta[0];
+    let mut zs_at_zeta_inv = zs_at_zeta;
+    ark_ff::batch_inversion(&mut zs_at_zeta_inv);
+
+    let coeffs = zs_at_zeta_inv.iter().zip(utils::powers_inf(gamma))
+        .map(|(zi_inv, gamma_to_i)| gamma_to_i * zi_inv * normalizer)
+        .collect();
+
+    // assert!(coeffs[0].is_one());
+    // assert_eq!(coeffs.len(), zs_at_zeta.len());
+    (coeffs, normalizer)
 }
 
 pub fn group_by_commitment<F: PrimeField, C: Commitment<F>>(
@@ -106,17 +113,8 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
     let (rs_at_zeta, zs_at_zeta): (Vec<_>, Vec<_>) = claims.iter()
         .map(|MultipointClaim { c: _, xs, ys }| interpolate_evaluate(xs, ys, &zeta))
         .unzip();
-    let normalizer = zs_at_zeta[0];
 
-    let mut zs_at_zeta_inv = zs_at_zeta;
-    ark_ff::batch_inversion(&mut zs_at_zeta_inv);
-
-    // 1, gamma, ..., gamma^{k-1}
-    let powers = crate::utils::powers(gamma, claims.len() - 1);
-    let coeffs: Vec<F> = powers.iter().zip(zs_at_zeta_inv.iter())
-        .map(|(&gamma_i, zi_inv)| gamma_i * zi_inv * normalizer) // (gamma^i / z_i(zeta)) * normalizer
-        .collect();
-    assert!(coeffs[0].is_one());
+    let (coeffs, normalizer) = coeffs(zs_at_zeta, gamma);
 
     //TODO: multiexp
     let agg_c: CS::C = claims.iter().zip(coeffs.iter())
