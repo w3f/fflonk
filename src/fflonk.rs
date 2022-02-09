@@ -83,8 +83,8 @@ impl<F: FftField, P: UVPolynomial<F>> Fflonk<F, P>
         let roots = Self::roots(t, root_of_x);
         let evals_at_roots = roots.iter().map(|&root| {
             evals_at_x.iter()
-                .zip(utils::powers(root, t-1))
-                .map(|(&eval, root)| eval * root).sum()
+                .zip(utils::powers_inf(root))
+                .map(|(&eval, next_root)| eval * next_root).sum()
         }).collect();
         (roots, evals_at_roots)
     }

@@ -46,10 +46,9 @@ impl<E: PairingEngine> URS<E> {
         assert!(n <= 1 << <E::Fr as FftField>::FftParams::TWO_ADICITY, "number of bases exceeds curve 2-adicity");
 
         let t_powers = start_timer!(|| format!("Computing {} scalars powers", n));
-        let powers_of_tau = utils::powers(tau, n - 1);
         // tau^0, ..., tau^(n-1))
+        let powers_of_tau: Vec<E::Fr> = utils::powers_inf(tau).take(n).collect();
         end_timer!(t_powers);
-        assert_eq!(powers_of_tau.len(), n);
 
         let g1 = E::G1Projective::rand(rng);
         let g2 = E::G2Projective::rand(rng);

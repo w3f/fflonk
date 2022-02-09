@@ -4,21 +4,18 @@ pub(crate) mod poly;
 use ark_ff::{FftField, Field};
 use ark_poly::{Polynomial, UVPolynomial};
 use ark_poly::univariate::DensePolynomial;
+use ark_std::iter::Successors;
 
 /// (max_exp+1)-sized vec: 1, base, base^2,... ,base^{max_exp}
 pub fn powers<F: Field>(base: F, max_exp: usize) -> Vec<F> {
-    let mut result = Vec::with_capacity(max_exp + 1);
-    result.push(F::one());
-    if max_exp > 0 {
-        result.push(base);
-    }
-    let mut curr = base;
-    for _ in 1..max_exp {
-        curr *= base;
-        result.push(curr);
-    };
-    result
+    powers_inf(base).take(max_exp + 1).collect()
 }
+
+
+pub fn powers_inf<F: Field>(base: F) -> impl Iterator<Item=F> {
+    ark_std::iter::successors(Some(F::one()), move |power| Some(base * power))
+}
+
 
 pub fn randomize<P, F>(
     r: F,
@@ -27,14 +24,10 @@ pub fn randomize<P, F>(
     where
         F: Field,
         P: Polynomial<F> {
-    let mut res = P::zero();
-    if polys.is_empty() {
-        return res;
-    }
-    let powers = powers(r, polys.len() - 1);
 
-    powers.into_iter().zip(polys).for_each(|(r, p)| {
-        res += (r, p);
+    let mut res = P::zero();
+    polys.iter().zip(powers_inf(r)).for_each(|(p, power_of_r)| {
+        res += (power_of_r, p);
     });
     res
 }
