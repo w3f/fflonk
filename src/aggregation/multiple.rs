@@ -134,10 +134,8 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
 
     let (coeffs, normalizer) = get_coeffs(zs_at_zeta, gamma);
 
-    //TODO: multiexp
-    let agg_c: CS::C = claims.iter().zip(coeffs.iter())
-        .map(|(claim, &coeff)| claim.c.mul(coeff))
-        .sum();
+    let commitments = claims.into_iter().map(|cl| cl.c).collect::<Vec<_>>();
+    let agg_c: CS::C = CS::C::combine(&coeffs, &commitments);
 
     let agg_r_at_zeta: F = rs_at_zeta.into_iter().zip(coeffs.iter())
         .map(|(ri_at_zeta, coeff)| ri_at_zeta * coeff)

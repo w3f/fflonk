@@ -8,6 +8,7 @@ use ark_ec::ProjectiveCurve;
 
 use ark_serialize::*;
 use ark_std::io::{Read, Write};
+use crate::utils::ec::small_multiexp_proj;
 
 
 /// KZG commitment to G1 represented in projective coordinates.
@@ -19,6 +20,12 @@ impl <E: PairingEngine> Commitment<E::Fr> for KzgCommitment<E> {
     fn mul(&self, by: E::Fr) -> KzgCommitment<E> {
         let x: E::G1Projective = self.0.mul(by.into_repr());
         KzgCommitment(x)
+    }
+
+    fn combine(coeffs: &[<E as PairingEngine>::Fr], commitments: &[Self]) -> Self {
+        let bases = commitments.iter().map(|c| c.0).collect::<Vec<_>>();
+        let prod = small_multiexp_proj(coeffs, bases.as_slice());
+        KzgCommitment(prod)
     }
 }
 
