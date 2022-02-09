@@ -4,12 +4,6 @@ pub(crate) mod poly;
 use ark_ff::{FftField, Field};
 use ark_poly::{Polynomial, UVPolynomial};
 use ark_poly::univariate::DensePolynomial;
-use ark_std::iter::Successors;
-
-/// (max_exp+1)-sized vec: 1, base, base^2,... ,base^{max_exp}
-pub fn powers<F: Field>(base: F, max_exp: usize) -> Vec<F> {
-    powers_inf(base).take(max_exp + 1).collect()
-}
 
 
 pub fn powers_inf<F: Field>(base: F) -> impl Iterator<Item=F> {

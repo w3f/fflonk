@@ -50,7 +50,7 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
     let zs_at_zeta: Vec<_> = zs.iter().map(|zi| zi.evaluate(&zeta)).collect();
 
     // Notice we already used gamma to compute the aggregate quotient q.
-    let (coeffs, normalizer) = coeffs(zs_at_zeta, gamma);
+    let (coeffs, normalizer) = get_coeffs(zs_at_zeta, gamma);
 
     // pi(X) = fi(X) - ri(zeta)
     let ps: Vec<Poly<F>> = fs.iter().zip(rs_at_zeta)
@@ -68,8 +68,8 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
 
 /// Takes evaluations of vanishing polynomials at a random point `zeta`, and a random challenge `gamma`,
 /// and returns coefficients for the random linear combination of polynomials/commitments.
-fn coeffs<F: PrimeField>(zs_at_zeta: Vec<F>, gamma: F) -> (Vec<F>, F) {
-    //TODO
+fn get_coeffs<F: PrimeField>(zs_at_zeta: Vec<F>, gamma: F) -> (Vec<F>, F) {
+    assert!(!zs_at_zeta.is_empty(), "empty vec");
     let normalizer = zs_at_zeta[0];
     let mut zs_at_zeta_inv = zs_at_zeta;
     ark_ff::batch_inversion(&mut zs_at_zeta_inv);
@@ -78,8 +78,6 @@ fn coeffs<F: PrimeField>(zs_at_zeta: Vec<F>, gamma: F) -> (Vec<F>, F) {
         .map(|(zi_inv, gamma_to_i)| gamma_to_i * zi_inv * normalizer)
         .collect();
 
-    // assert!(coeffs[0].is_one());
-    // assert_eq!(coeffs.len(), zs_at_zeta.len());
     (coeffs, normalizer)
 }
 
@@ -114,7 +112,7 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
         .map(|MultipointClaim { c: _, xs, ys }| interpolate_evaluate(xs, ys, &zeta))
         .unzip();
 
-    let (coeffs, normalizer) = coeffs(zs_at_zeta, gamma);
+    let (coeffs, normalizer) = get_coeffs(zs_at_zeta, gamma);
 
     //TODO: multiexp
     let agg_c: CS::C = claims.iter().zip(coeffs.iter())
@@ -139,6 +137,7 @@ mod tests {
     use crate::pcs::PcsParams;
     use ark_std::iter::FromIterator;
     use crate::tests::{TestKzg, TestField};
+    use ark_ff::{UniformRand, One};
 
 
     impl<F: PrimeField, G> Transcript<F, G> for (F, F) {
@@ -149,6 +148,21 @@ mod tests {
         fn get_zeta(&mut self) -> F { self.1 }
     }
 
+    #[test]
+    fn test_get_coeffs() {
+        let rng = &mut test_rng();
+
+        let zs = (0..10).map(|_| TestField::rand(rng)).collect::<Vec<_>>();
+
+        let gamma = TestField::rand(rng);
+        let (coeffs, _) = get_coeffs(zs.clone(), gamma);
+        assert_eq!(coeffs.len(), zs.len());
+        assert!(coeffs[0].is_one());
+
+        let gamma = TestField::one();
+        let (coeffs, normalizer) = get_coeffs(zs.clone(), gamma);
+        assert!(coeffs.iter().zip(zs).all(|(c, z)| z * c == normalizer));
+    }
 
     fn _test_aggregation<F: PrimeField, CS: PCS<F>>() {
         let rng = &mut test_rng();
