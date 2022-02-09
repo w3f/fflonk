@@ -1,5 +1,10 @@
 use ark_ff::{PrimeField, Zero};
 use crate::Poly;
+use ark_poly::UVPolynomial;
+
+pub(crate) fn constant_poly<F: PrimeField>(c: F) -> Poly<F> {
+    Poly::from_coefficients_vec(vec![c])
+}
 
 fn interpolate<F: PrimeField>(xs: &[F], ys: &[F]) -> Poly<F> {
     let x1 = xs[0];

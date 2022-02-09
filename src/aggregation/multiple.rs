@@ -1,12 +1,12 @@
 use std::collections::HashSet;
 
 use ark_ff::{PrimeField, Zero};
-use ark_poly::{Polynomial, UVPolynomial};
+use ark_poly::Polynomial;
 
 use crate::{EuclideanPolynomial, Poly, utils};
 use crate::pcs::{Commitment, PCS};
 use ark_std::iterable::Iterable;
-use crate::utils::poly::interpolate_evaluate;
+use crate::utils::poly::{interpolate_evaluate, constant_poly};
 
 pub struct MultipointClaim<F: PrimeField, C: Commitment<F>> {
     pub c: C,
@@ -54,7 +54,7 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
 
     // pi(X) = fi(X) - ri(zeta)
     let ps: Vec<Poly<F>> = fs.iter().zip(rs_at_zeta)
-        .map(|(fi, ri)| fi - &Poly::from_coefficients_vec(vec![ri])).
+        .map(|(fi, ri)| fi - &constant_poly(ri)).
         collect();
 
     let mut l = Poly::zero();
