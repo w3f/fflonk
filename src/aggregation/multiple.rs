@@ -1,12 +1,13 @@
 use std::collections::HashSet;
 
-use ark_ff::{PrimeField, Zero};
+use ark_ff::PrimeField;
 use ark_poly::Polynomial;
 
 use crate::{EuclideanPolynomial, Poly, utils};
 use crate::pcs::{Commitment, PCS};
 use ark_std::iterable::Iterable;
-use crate::utils::poly::{interpolate_evaluate, constant_poly};
+use crate::utils::poly::interpolate_evaluate;
+use crate::utils::poly;
 
 pub struct MultipointClaim<F: PrimeField, C: Commitment<F>> {
     pub c: C,
@@ -28,42 +29,61 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
     transcript: &mut T,
 ) -> (Poly<F>, F, CS::C) {
     assert_eq!(xss.len(), fs.len(), "{} opening sets specified for {} polynomials", xss.len(), fs.len());
+    // Both Halo-inf and fflonk/shplonk use the notation "complement" in set-theoretical sense to that is used in the code.
+    // The papers consider vanishing polynomials of the complements of the opening sets,
+    // while in the code vanishing polynomials of the opening sets are used directly.
+    // Comments bellow bridge notation between the code and the papers to explain that the code is equivalent
+    // using https://eprint.iacr.org/2021/1167.pdf, Lemma 4.2. as the authority.
 
-    // zi - vanishing polynomials of the set {xj} of opening points of fi
+    // zi - the vanishing polynomial of the set xsi ("Si" in the paper) of the opening points for fi, i = 0,...,k-1
     let zs: Vec<_> = xss.iter()
-        .map(|xs| utils::z_of_set(xs))
+        .map(|xsi| utils::z_of_set(xsi))
         .collect();
+    // The paper defines "T" as the set of all the opening points, "Z_T", it's vanishing polynomial,
+    // and "Z_{T\S_i}" as the vanishing polynomial of the complement of "Si" in "T".
+    // Observe that for zi computed above, "Z_T" = zi * "Z_{T\S_i}"     (*)
 
-    // (qi, ri) - quotient and remainder from division of fi by the corresponding vanishing polynomial zi
-    // fi = qi * zi + ri
+
+    // (qi, ri) - the quotient and the remainder of division of fi by the corresponding vanishing polynomial zi
+    // qi = (fi - ri) / zi     (**)
     let (qs, rs): (Vec<_>, Vec<_>) = fs.iter().zip(zs.iter())
         .map(|(fi, zi)| fi.divide_with_q_and_r(zi))
         .unzip();
 
     let gamma = transcript.get_gamma();
-    let q = utils::randomize(gamma, &qs);
-    let qc = CS::commit(ck, &q);
+
+    // The paper defines f = sum(gamma^i * "Z_{T\S_i}" * (fi - ri))
+    // Let q := f / "Z_T"
+    // By (*) "Z_T" = zi * "Z_{T\S_i}", hence q = f / (zi * "Z_{T\S_i})" = sum(gamma^i * (fi - ri) / zi)
+    // By (**) qi = (fi - ri) / zi, thus q = sum(gamma^i * qi)
+    let q = poly::sum_with_powers(gamma, &qs);
+    let qc = CS::commit(ck, &q); // W in the paper
     transcript.commit_to_q(&qc);
+
     let zeta = transcript.get_zeta();
 
     let rs_at_zeta: Vec<_> = rs.iter().map(|ri| ri.evaluate(&zeta)).collect();
     let zs_at_zeta: Vec<_> = zs.iter().map(|zi| zi.evaluate(&zeta)).collect();
 
-    // Notice we already used gamma to compute the aggregate quotient q.
-    let (coeffs, normalizer) = get_coeffs(zs_at_zeta, gamma);
-
-    // pi(X) = fi(X) - ri(zeta)
+    // Let pi(X) = fi(X) - ri(zeta)
     let ps: Vec<Poly<F>> = fs.iter().zip(rs_at_zeta)
-        .map(|(fi, ri)| fi - &constant_poly(ri)).
-        collect();
+        .map(|(fi, ri)| fi - &poly::constant(ri))
+        .collect();
 
-    let mut l = Poly::zero();
-    for (coeff, pi) in coeffs.into_iter().zip(ps.iter()) {
-        l += (coeff, pi);
-    }
+    // From (*) follows that "Z_{T\S_i}"(zeta) = "Z_T"(zeta) / zi(zeta), so
+    // 1. "L" = sum([gamma^i * "Z_T"(zeta) / zi(zeta)] * pi) - "Z_T"(zeta) * q
+    // 2. "Z_{T\S_0}"(zeta) = "Z_T"(zeta) / z0(zeta)
+    // We want to compute l_norm = "L"/"Z_{T\S_0}"(zeta) = "L" * z0(zeta) / "Z_T"(zeta)
+    // Notice that "Z_T"(zeta) cancels out from the both terms of "L"
 
-    let l = &l - &(&q * normalizer);
-    (l, zeta, qc)
+    // Finally l_norm = sum([gamma^i * z0(zeta) / zi(zeta)] * pi) - z0(zeta) * q
+    // normalizer := z0(zeta)
+    // coeff_i := gamma^i * z0(zeta) / zi(zeta)
+    let (coeffs, normalizer) = get_coeffs(zs_at_zeta, gamma);
+    let l_norm = &poly::sum_with_coeffs(coeffs, &ps) - &(&q * normalizer);
+
+    // It remains to notice that "W'" is a KZG opening proof for polynomial l_norm in point zeta.
+    (l_norm, zeta, qc)
 }
 
 /// Takes evaluations of vanishing polynomials at a random point `zeta`, and a random challenge `gamma`,
@@ -185,7 +205,7 @@ mod tests {
 
         let (agg_poly, zeta, agg_proof) = aggregate_polys::<_, CS, _>(&ck, &opening.fs, &sets_of_xss, transcript);
         let claims = group_by_commitment(&opening.fcs, &opening.xss, &opening.yss);
-        let onec = CS::commit(&vk.clone().into(), &Poly::from_coefficients_slice(&[F::one()]));
+        let onec = CS::commit(&vk.clone().into(), &poly::constant(F::one()));
         let agg_claim = aggregate_claims::<_, CS, _>(claims, &agg_proof, &onec, transcript);
 
         assert_eq!(CS::commit(&ck, &agg_poly), agg_claim.c);

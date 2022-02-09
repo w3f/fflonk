@@ -1,9 +1,30 @@
-use ark_ff::{PrimeField, Zero};
+use ark_ff::{PrimeField, Zero, Field};
 use crate::Poly;
-use ark_poly::UVPolynomial;
+use ark_poly::{UVPolynomial, Polynomial};
+use crate::utils::powers;
 
-pub(crate) fn constant_poly<F: PrimeField>(c: F) -> Poly<F> {
+pub(crate) fn constant<F: PrimeField>(c: F) -> Poly<F> {
     Poly::from_coefficients_vec(vec![c])
+}
+
+pub(crate) fn sum_with_coeffs<F: Field, P: Polynomial<F>>(
+    coeffs: Vec<F>,
+    polys: &[P],
+) -> P {
+    assert_eq!(coeffs.len(), polys.len());
+    let mut res = P::zero();
+    for (c, p) in coeffs.into_iter().zip(polys.iter()) {
+        res += (c, p);
+    }
+    res
+}
+
+pub(crate) fn sum_with_powers<F: Field, P: Polynomial<F>>(
+    r: F,
+    polys: &[P],
+) -> P {
+    let powers = powers(r).take(polys.len()).collect::<Vec<_>>();
+    sum_with_coeffs(powers, polys)
 }
 
 fn interpolate<F: PrimeField>(xs: &[F], ys: &[F]) -> Poly<F> {
