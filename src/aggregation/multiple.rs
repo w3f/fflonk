@@ -132,32 +132,37 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
         .map(|MultipointClaim { c: _, xs, ys }| interpolate_evaluate(xs, ys, &zeta))
         .unzip();
 
-    let (coeffs, normalizer) = get_coeffs(zs_at_zeta, gamma);
-
-    let commitments = claims.into_iter().map(|cl| cl.c).collect::<Vec<_>>();
-    let agg_c: CS::C = CS::C::combine(&coeffs, &commitments);
+    let (mut coeffs, normalizer) = get_coeffs(zs_at_zeta, gamma);
+    assert!(coeffs[0].is_one());
 
     let agg_r_at_zeta: F = rs_at_zeta.into_iter().zip(coeffs.iter())
         .map(|(ri_at_zeta, coeff)| ri_at_zeta * coeff)
         .sum();
 
-    let lc = agg_c - onec.mul(agg_r_at_zeta) - qc.mul(normalizer);
+    let mut commitments = claims.into_iter().map(|cl| cl.c).collect::<Vec<_>>();
+    coeffs.push(-agg_r_at_zeta);
+    commitments.push(onec.clone());
+    coeffs.push(-normalizer);
+    commitments.push(qc.clone());
+
+    let lc = CS::C::combine(&coeffs, &commitments);
     MultipointClaim { c: lc, xs: vec![zeta], ys: vec![F::zero()] }
 }
 
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     use ark_ff::{One, UniformRand};
     use ark_std::iter::FromIterator;
     use ark_std::test_rng;
+    use ark_std::{end_timer, start_timer};
 
     use crate::pcs::PcsParams;
     use crate::pcs::tests::IdentityCommitment;
     use crate::shplonk::tests::{random_opening, random_xss};
-    use crate::tests::{TestField, TestKzg};
-
-    use super::*;
+    use crate::tests::{TestField, TestKzg, BenchField, BenchKzg};
 
     impl<F: PrimeField, G> Transcript<F, G> for (F, F) {
         fn get_gamma(&mut self) -> F { self.0 }
@@ -202,10 +207,16 @@ mod tests {
 
         let transcript = &mut (F::rand(rng), F::rand(rng));
 
+        let t_aggregate_polys = start_timer!(|| format!("Aggregate {} polynomials", opening.fs.len()));
         let (agg_poly, zeta, agg_proof) = aggregate_polys::<_, CS, _>(&ck, &opening.fs, &sets_of_xss, transcript);
+        end_timer!(t_aggregate_polys);
+
         let claims = group_by_commitment(&opening.fcs, &opening.xss, &opening.yss);
         let onec = CS::commit(&vk.clone().into(), &poly::constant(F::one()));
+
+        let t_aggregate_claims = start_timer!(|| format!("Aggregate {} claims", claims.len()));
         let agg_claim = aggregate_claims::<_, CS, _>(claims, &agg_proof, &onec, transcript);
+        end_timer!(t_aggregate_claims);
 
         assert_eq!(CS::commit(&ck, &agg_poly), agg_claim.c);
         assert_eq!(zeta, agg_claim.xs[0]);
@@ -217,5 +228,11 @@ mod tests {
     fn test_aggregation() {
         _test_aggregation::<TestField, IdentityCommitment>();
         _test_aggregation::<TestField, TestKzg>();
+    }
+
+    #[test]
+    #[ignore]
+    fn bench_aggregation() {
+        _test_aggregation::<BenchField, BenchKzg>();
     }
 }
