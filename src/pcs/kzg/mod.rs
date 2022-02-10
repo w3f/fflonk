@@ -146,7 +146,7 @@ mod tests {
 
         let max_degree = (1 << log_n) - 1;
 
-        let t_setup = start_timer!(|| format!("KZG setup of size 2^{} on {}", log_n, use crate::utils::curve_name::<E>()));
+        let t_setup = start_timer!(|| format!("KZG setup of size 2^{} on {}", log_n, crate::utils::curve_name::<E>()));
         let urs = KZG::<E>::setup(max_degree, rng);
         end_timer!(t_setup);
 
