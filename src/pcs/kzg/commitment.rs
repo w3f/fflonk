@@ -1,24 +1,22 @@
 use ark_ec::PairingEngine;
 use crate::pcs::Commitment;
-use ark_ff::PrimeField;
 use ark_std::ops::Add;
 use std::ops::Sub;
 use ark_std::iter::Sum;
-use ark_ec::ProjectiveCurve;
+use ark_ec::AffineCurve;
 
 use ark_serialize::*;
 use ark_std::io::{Read, Write};
 
 
-/// KZG commitment to G1 represented in projective coordinates.
-// Is serialized in affine, so muight make sense to batch-convert if there are many points.
+/// KZG commitment to G1 represented in affine coordinates.
 #[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct KzgCommitment<E: PairingEngine>(pub E::G1Projective);
+pub struct KzgCommitment<E: PairingEngine>(pub E::G1Affine);
+
 
 impl <E: PairingEngine> Commitment<E::Fr> for KzgCommitment<E> {
     fn mul(&self, by: E::Fr) -> KzgCommitment<E> {
-        let x: E::G1Projective = self.0.mul(by.into_repr());
-        KzgCommitment(x)
+        KzgCommitment(self.0.mul(by).into())
     }
 }
 
@@ -34,13 +32,12 @@ impl<E: PairingEngine> Sub<Self> for KzgCommitment<E> {
     type Output = KzgCommitment<E>;
 
     fn sub(self, other: KzgCommitment<E>) -> KzgCommitment<E> {
-        KzgCommitment(self.0 - other.0)
+        KzgCommitment(self.0 + -other.0)
     }
 }
 
 impl<E: PairingEngine> Sum<Self> for KzgCommitment<E> {
     fn sum<I: Iterator<Item=Self>>(iter: I) -> KzgCommitment<E> {
-        let s: E::G1Projective = iter.map(|c| c.0).sum();
-        KzgCommitment(s)
+        KzgCommitment(iter.map(|c| c.0).sum())
     }
 }
