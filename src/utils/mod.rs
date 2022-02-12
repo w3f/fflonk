@@ -13,7 +13,6 @@ pub fn powers<F: Field>(base: F) -> impl Iterator<Item=F> {
 
 
 
-#[cfg(test)]
 pub fn curve_name<E: ark_ec::PairingEngine>() -> &'static str {
     // ark_ec::models::bw6::BW6<ark_bw6_761::curves::Parameters>
     let full_name = std::any::type_name::<E>();
