@@ -115,17 +115,16 @@ impl<E: PairingEngine> PCS<E::Fr> for KZG<E> {
             &coeffs,
         );
 
-        KzgCommitment(commitment)
+        KzgCommitment(commitment.into())
     }
 
     fn open(ck: &KzgCommitterKey<E::G1Affine>, p: &Poly<E::Fr>, x: E::Fr) -> Self::Proof {
         let q = Self::compute_quotient(p, x);
-        Self::commit(ck, &q).0.into_affine()
+        Self::commit(ck, &q).0
     }
 
     fn verify(vk: &KzgVerifierKey<E>, c: Self::C, x: E::Fr, y: E::Fr, proof: Self::Proof) -> bool {
-        let c = c.0.into_affine();
-        let opening = KzgOpening { c, x, y, proof };
+        let opening = KzgOpening { c: c.0, x, y, proof };
         Self::verify_single(opening, vk)
     }
 }
@@ -184,7 +183,7 @@ mod tests {
             let f = Poly::<E::Fr>::rand(d, rng);
             let x = xs[i];
             let y = f.evaluate(&x);
-            let c = KZG::<E>::commit(ck, &f).0.into_affine();
+            let c = KZG::<E>::commit(ck, &f).0;
             let proof = KZG::<E>::open(ck, &f, x);
             KzgOpening { c, x, y, proof }
         }).collect()
