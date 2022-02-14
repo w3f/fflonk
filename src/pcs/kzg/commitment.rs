@@ -7,7 +7,7 @@ use ark_ec::AffineCurve;
 
 use ark_serialize::*;
 use ark_std::io::{Read, Write};
-use crate::utils::ec::small_multiexp_proj;
+use crate::utils::ec::{small_multiexp_affine};
 
 
 /// KZG commitment to G1 represented in affine coordinates.
@@ -22,8 +22,8 @@ impl <E: PairingEngine> Commitment<E::Fr> for KzgCommitment<E> {
 
     fn combine(coeffs: &[<E as PairingEngine>::Fr], commitments: &[Self]) -> Self {
         let bases = commitments.iter().map(|c| c.0).collect::<Vec<_>>();
-        let prod = small_multiexp_proj(coeffs, bases.as_slice());
-        KzgCommitment(prod)
+        let prod = small_multiexp_affine(coeffs, &bases);
+        KzgCommitment(prod.into())
     }
 }
 
