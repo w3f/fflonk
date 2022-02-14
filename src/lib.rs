@@ -128,15 +128,19 @@ mod tests {
     use super::*;
     use ark_ec::PairingEngine;
 
+    pub(crate) type TestCurve = ark_bls12_381::Bls12_381;
+    pub(crate) type TestField = <TestCurve as PairingEngine>::Fr;
+    pub(crate) type TestKzg = KZG::<TestCurve>;
+
     pub(crate) type BenchCurve = ark_bw6_761::BW6_761;
     pub(crate) type BenchField = <BenchCurve as PairingEngine>::Fr;
 
     #[allow(dead_code)] // used by ignored tests
     pub(crate) type BenchKzg = KZG::<BenchCurve>;
 
-    pub(crate) type TestCurve = ark_bls12_381::Bls12_381;
-    pub(crate) type TestField = <TestCurve as PairingEngine>::Fr;
-    pub(crate) type TestKzg = KZG::<TestCurve>;
+    pub const BENCH_DEG_LOG1: usize = 10;
+    pub const BENCH_DEG_LOG2: usize = 16;
+    // const BENCH_DEG_LOG3: usize = 24; Eth 2.0 coming?
 
     fn generate_test_data<R, F>(
         rng: &mut R,
