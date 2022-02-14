@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use ark_ff::PrimeField;
 use ark_poly::Polynomial;
 use ark_std::iterable::Iterable;
+use ark_std::{end_timer, start_timer};
 
 use crate::{EuclideanPolynomial, Poly, utils};
 use crate::pcs::{Commitment, PCS};
@@ -46,9 +47,11 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
 
     // (qi, ri) - the quotient and the remainder of division of fi by the corresponding vanishing polynomial zi
     // qi = (fi - ri) / zi     (**)
+    let t_divisions = start_timer!(|| "polynomial divisions");
     let (qs, rs): (Vec<_>, Vec<_>) = fs.iter().zip(zs.iter())
         .map(|(fi, zi)| fi.divide_with_q_and_r(zi))
         .unzip();
+    end_timer!(t_divisions);
 
     let gamma = transcript.get_gamma();
 
@@ -57,7 +60,9 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
     // By (*) "Z_T" = zi * "Z_{T\S_i}", hence q = f / (zi * "Z_{T\S_i})" = sum(gamma^i * (fi - ri) / zi)
     // By (**) qi = (fi - ri) / zi, thus q = sum(gamma^i * qi)
     let q = poly::sum_with_powers(gamma, &qs);
-    let qc = CS::commit(ck, &q); // W in the paper
+    let t_commit = start_timer!(|| format!("commitment to a degree-{} polynomial", q.degree()));
+    let qc = CS::commit(ck, &q); // "W" in the paper
+    end_timer!(t_commit);
     transcript.commit_to_q(&qc);
 
     let zeta = transcript.get_zeta();
@@ -80,7 +85,9 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
     // normalizer := z0(zeta)
     // coeff_i := gamma^i * z0(zeta) / zi(zeta)
     let (coeffs, normalizer) = get_coeffs(zs_at_zeta, gamma);
+    let t_combine = start_timer!(|| "linear combination of polynomials");
     let l_norm = &poly::sum_with_coeffs(coeffs, &ps) - &(&q * normalizer);
+    end_timer!(t_combine);
 
     // It remains to notice that "W'" is a KZG opening proof for polynomial l_norm in point zeta.
     (l_norm, zeta, qc)
@@ -128,38 +135,45 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
     // as a pair of polynomials (ri, zi), where zi is the vanishing polynomial of the set {xj},
     // and ri is the interpolation polynomial of the set {(xj, yj)}.
     // ri(zeta), zi(zeta)
+    let t_eval = start_timer!(|| "barycentric evaluations");
     let (rs_at_zeta, zs_at_zeta): (Vec<_>, Vec<_>) = claims.iter()
         .map(|MultipointClaim { c: _, xs, ys }| interpolate_evaluate(xs, ys, &zeta))
         .unzip();
+    end_timer!(t_eval);
 
-    let (coeffs, normalizer) = get_coeffs(zs_at_zeta, gamma);
-
-    //TODO: multiexp
-    let agg_c: CS::C = claims.iter().zip(coeffs.iter())
-        .map(|(claim, &coeff)| claim.c.mul(coeff))
-        .sum();
+    let (mut coeffs, normalizer) = get_coeffs(zs_at_zeta, gamma);
+    assert!(coeffs[0].is_one());
 
     let agg_r_at_zeta: F = rs_at_zeta.into_iter().zip(coeffs.iter())
         .map(|(ri_at_zeta, coeff)| ri_at_zeta * coeff)
         .sum();
 
-    let lc = agg_c - onec.mul(agg_r_at_zeta) - qc.mul(normalizer);
+    let mut commitments = claims.into_iter().map(|cl| cl.c).collect::<Vec<_>>();
+    coeffs.push(-agg_r_at_zeta);
+    commitments.push(onec.clone());
+    coeffs.push(-normalizer);
+    commitments.push(qc.clone());
+
+    let t_combine = start_timer!(|| "multiexp");
+    let lc = CS::C::combine(&coeffs, &commitments);
+    end_timer!(t_combine);
     MultipointClaim { c: lc, xs: vec![zeta], ys: vec![F::zero()] }
 }
 
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     use ark_ff::{One, UniformRand};
     use ark_std::iter::FromIterator;
     use ark_std::test_rng;
+    use ark_std::{end_timer, start_timer};
 
     use crate::pcs::PcsParams;
     use crate::pcs::tests::IdentityCommitment;
     use crate::shplonk::tests::{random_opening, random_xss};
-    use crate::tests::{TestField, TestKzg};
-
-    use super::*;
+    use crate::tests::{TestField, TestKzg, BenchField, BenchKzg, BENCH_DEG_LOG1};
 
     impl<F: PrimeField, G> Transcript<F, G> for (F, F) {
         fn get_gamma(&mut self) -> F { self.0 }
@@ -185,11 +199,10 @@ mod tests {
         assert!(coeffs.iter().zip(zs).all(|(c, z)| z * c == normalizer));
     }
 
-    fn _test_aggregation<F: PrimeField, CS: PCS<F>>() {
+    fn _test_aggregation<F: PrimeField, CS: PCS<F>>(d: usize) { // degree of polynomials
         let rng = &mut test_rng();
 
-        let d = 15; // degree of polynomials
-        let t = 4; // number of polynomials
+        let t = 8; // number of polynomials
         let max_m = 3; // maximal number of opening points per polynomial
 
         let params = CS::setup(d, rng);
@@ -204,10 +217,16 @@ mod tests {
 
         let transcript = &mut (F::rand(rng), F::rand(rng));
 
+        let t_aggregate_polys = start_timer!(|| format!("Aggregate {} degree-{} polynomials", t, d));
         let (agg_poly, zeta, agg_proof) = aggregate_polys::<_, CS, _>(&ck, &opening.fs, &sets_of_xss, transcript);
+        end_timer!(t_aggregate_polys);
+
         let claims = group_by_commitment(&opening.fcs, &opening.xss, &opening.yss);
         let onec = CS::commit(&vk.clone().into(), &poly::constant(F::one()));
+
+        let t_aggregate_claims = start_timer!(|| format!("Aggregate {} claims", claims.len()));
         let agg_claim = aggregate_claims::<_, CS, _>(claims, &agg_proof, &onec, transcript);
+        end_timer!(t_aggregate_claims);
 
         assert_eq!(CS::commit(&ck, &agg_poly), agg_claim.c);
         assert_eq!(zeta, agg_claim.xs[0]);
@@ -217,7 +236,13 @@ mod tests {
 
     #[test]
     fn test_aggregation() {
-        _test_aggregation::<TestField, IdentityCommitment>();
-        _test_aggregation::<TestField, TestKzg>();
+        _test_aggregation::<TestField, IdentityCommitment>(15);
+        _test_aggregation::<TestField, TestKzg>(15);
+    }
+
+    #[test]
+    #[ignore]
+    fn bench_aggregation() {
+        _test_aggregation::<BenchField, BenchKzg>((1 << BENCH_DEG_LOG1) - 1);
     }
 }

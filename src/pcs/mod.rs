@@ -19,6 +19,7 @@ Eq
 + Sum<Self>
 {
     fn mul(&self, by: F) -> Self;
+    fn combine(coeffs: &[F], commitments: &[Self]) -> Self;
 }
 
 
@@ -77,6 +78,7 @@ pub(crate) mod tests {
     use crate::Poly;
 
     use super::*;
+    use crate::utils::poly;
 
     #[derive(Clone, PartialEq, Eq, Debug)]
     pub struct WrappedPolynomial<F: PrimeField>(pub Poly<F>);
@@ -116,6 +118,12 @@ pub(crate) mod tests {
             let mut temp = Poly::zero(); //TODO
             temp += (by, &self.0);
             WrappedPolynomial(temp)
+        }
+
+        fn combine(coeffs: &[F], commitments: &[Self]) -> Self {
+            let polys = commitments.to_vec().into_iter().map(|c| c.0).collect::<Vec<_>>();
+            let combined = poly::sum_with_coeffs(coeffs.to_vec(), &polys);
+            WrappedPolynomial(combined)
         }
     }
 
