@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::Poly;
+    use crate::{Poly, FflonkyKzg};
     use ark_std::test_rng;
     use ark_poly::{UVPolynomial, Polynomial};
     use crate::utils::poly;
@@ -66,16 +66,16 @@ mod tests {
             fs1.push(t0);
             let fs2 = vec![z, t1, t2];
             vec![
-                Combination { fs: fs0, xs: vec![zeta] },
-                Combination { fs: fs1, xs: vec![zeta] },
-                Combination { fs: fs2, xs: vec![zeta, zeta * omega] },
+                Combination { fs: fs0, xs_roots: vec![zeta] },
+                Combination { fs: fs1, xs_roots: vec![zeta] },
+                Combination { fs: fs2, xs_roots: vec![zeta, zeta * omega] },
             ]
         }
     }
 
     struct Combination<F: PrimeField> {
         fs: Vec<Poly<F>>,
-        xs: Vec<F>,
+        xs_roots: Vec<F>,
     }
 
     impl<F: PrimeField> Combination<F> {
@@ -92,38 +92,77 @@ mod tests {
         }
     }
 
+    struct Prover<F: PrimeField, CS: PCS<F>> {
+        ck: CS::CK,
+    }
 
-    #[test]
-    fn test_vanilla_plonk_opening() {
+    impl<F: PrimeField, CS: PCS<F>> Prover<F, CS> {
+        fn new(ck: CS::CK) -> Self {
+            Self { ck }
+        }
+
+        fn prove(&self, combinations: Vec<Combination<F>>) {
+            let comms = self.commit(&combinations);
+            let proof = self.open(combinations);
+        }
+
+        fn commit(&self, combinations: &[Combination<F>]) -> Vec<CS::C> {
+            let t_preprocessing = start_timer!(|| "Preprocessing");
+            let preprocessed_c = self.commit_combination(&combinations[0]);
+            end_timer!(t_preprocessing);
+
+            let t_commitment = start_timer!(|| "Commitment");
+            let fcs = combinations.iter().map(|c| self.commit_combination(c)).collect::<Vec<_>>();
+            end_timer!(t_commitment);
+
+            let mut res = vec![preprocessed_c];
+            res.extend(fcs);
+            res
+        }
+
+        fn commit_combination(&self, combination: &Combination<F>) -> CS::C {
+            let t_commit = start_timer!(|| format!("{} polys of degree up to {}", combination.fs.len(), combination.max_degree()));
+            let combined_p = Fflonk::combine(combination.t(), &combination.fs);
+            let combined_c = CS::commit(&self.ck, &combined_p);
+            end_timer!(t_commit, || format!("combined poly degree = {}", combined_p.degree()));
+            combined_c
+        }
+
+        fn open(&self, combinations: Vec<Combination<F>>)  {
+            let rng = &mut test_rng();
+            let transcript = &mut (F::rand(rng), F::rand(rng));
+
+            let (ts, (fss, xss)): (Vec<_>, (Vec<_>, Vec<_>)) =
+                combinations.into_iter().map(|c| (c.t(), (c.fs, c.xs_roots))).unzip();
+
+            let t_open = start_timer!(|| "Opening");
+            let proof = FflonkyKzg::<F, CS>::open(&self.ck, &fss, &ts, &xss, transcript);
+            end_timer!(t_open);
+        }
+    }
+
+    fn _test_vanilla_plonk_opening<F: PrimeField, CS: PCS<F>>(log_n: usize) {
         let rng = &mut test_rng();
 
-        let log_n = 8;
         let n = 1 << log_n;
 
-        let piop = VanillaPlonk::new(n, rng);
+        let piop = VanillaPlonk::<F, _>::new(n, rng);
         let combinations = piop.combinations();
 
         let urs_degree = combinations.iter().map(|c| c.max_combined_degree()).max().unwrap();
 
         let t_setup = start_timer!(|| format!("KZG setup of size {} on {}", urs_degree, crate::utils::curve_name::<TestCurve>()));
-        let urs = TestKzg::setup(urs_degree, rng);
+        let params = CS::setup(urs_degree, rng);
         end_timer!(t_setup);
 
-        let (ck, vk) = (urs.ck(), urs.vk());
+        let (ck, vk) = (params.ck(), params.vk());
 
-        let preprocessed = &combinations[0];
-        let t_commit_preprocessed = start_timer!(|| format!("Preprocessing: committing to the combination of {} polynomials of degree up to {}", preprocessed.fs.len(), preprocessed.max_degree()));
-        let preprocessed_combined = Fflonk::combine(preprocessed.t(), &preprocessed.fs);
-        let preprocessed_combined_c = TestKzg::commit(&ck, &preprocessed_combined);
-        end_timer!(t_commit_preprocessed, || format!("combined polynomial degree = {}!", preprocessed_combined.degree()));
+        let prover = Prover::<F, CS>::new(ck);
+        prover.prove(combinations);
+    }
 
-        let t_commit = start_timer!(|| format!("Generating commitments to {} combinations", combinations[1..].len()));
-        for combination in combinations {
-            let t_commit_combination = start_timer!(|| format!("committing to to the combination of {} polynomials of degree up to {}", combination.fs.len(), combination.max_degree()));
-            let combined = Fflonk::combine(combination.t(), &combination.fs);
-            let combined_c = TestKzg::commit(&ck, &combined);
-            end_timer!(t_commit_combination, || format!("combined polynomial degree = {}!", combined.degree()));
-        }
-        end_timer!(t_commit);
+    #[test]
+    fn test_vanilla_plonk_opening() {
+        _test_vanilla_plonk_opening::<TestField, TestKzg>(8);
     }
 }
