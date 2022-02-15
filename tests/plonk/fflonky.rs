@@ -122,6 +122,8 @@ impl<F: PrimeField, CS: PCS<F>> PlonkWithFflonkTest<F, CS> {
 }
 
 impl<F: PrimeField, CS: PCS<F>> DecoyPlonk<F, CS> for PlonkWithFflonkTest<F, CS> {
+    type Proof = AggregateProof<F, CS>;
+
     fn setup<R: Rng>(&mut self, rng: &mut R) -> (CS::CK, CS::VK) {
         let urs_degree = self.combinations.iter()
             .map(|c| c.max_combined_degree())
@@ -141,7 +143,7 @@ impl<F: PrimeField, CS: PCS<F>> DecoyPlonk<F, CS> for PlonkWithFflonkTest<F, CS>
         vec![commitment]
     }
 
-    fn prove(&mut self, ck: &CS::CK) -> (AggregateProof<F, CS>, Vec<CS::C>, Vec<Vec<Vec<F>>>) {
+    fn prove(&mut self, ck: &CS::CK) -> (Self::Proof, Vec<CS::C>, Vec<Vec<Vec<F>>>) {
         let empty_transcript = &mut merlin::Transcript::new(b"plonk-fflonk-shplonk-kzg");
         let t_proving = start_timer!(|| "Proving");
         let commitments = self._commit_proof_polynomials(ck);
@@ -151,7 +153,7 @@ impl<F: PrimeField, CS: PCS<F>> DecoyPlonk<F, CS> for PlonkWithFflonkTest<F, CS>
         (proof, commitments, evals)
     }
 
-    fn verify(&self, vk: &CS::VK, preprocessed_commitments: Vec<CS::C>, commitments_from_proof: Vec<CS::C>, evals_from_proof: Vec<Vec<Vec<F>>>, proof: AggregateProof<F, CS>) -> bool {
+    fn verify(&self, vk: &CS::VK, preprocessed_commitments: Vec<CS::C>, commitments_from_proof: Vec<CS::C>, evals_from_proof: Vec<Vec<Vec<F>>>, proof: Self::Proof) -> bool {
         let empty_transcript = &mut merlin::Transcript::new(b"plonk-fflonk-shplonk-kzg");
         let (ts, xss): (Vec<_>, Vec<_>) =
             self.combinations.iter()

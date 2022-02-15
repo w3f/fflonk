@@ -42,7 +42,7 @@ pub(crate) fn sum_with_coeffs<F: Field, P: Polynomial<F>>(
 }
 
 
-pub(crate) fn sum_with_powers<F: Field, P: Polynomial<F>>(
+pub fn sum_with_powers<F: Field, P: Polynomial<F>>(
     r: F,
     polys: &[P],
 ) -> P {

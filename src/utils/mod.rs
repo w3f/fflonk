@@ -1,5 +1,5 @@
 pub mod ec;
-pub(crate) mod poly;
+pub mod poly;
 
 
 

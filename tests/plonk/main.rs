@@ -57,10 +57,11 @@ impl<F: PrimeField> VanillaPlonkAssignments<F, Radix2EvaluationDomain<F>> {
 }
 
 trait DecoyPlonk<F: PrimeField, CS: PCS<F>> {
+    type Proof;
     fn setup<R: Rng>(&mut self, rng: &mut R) -> (CS::CK, CS::VK);
     fn preprocess(&mut self, ck: &CS::CK) -> Vec<CS::C>;
-    fn prove(&mut self, ck: &CS::CK) -> (AggregateProof<F, CS>, Vec<CS::C>, Vec<Vec<Vec<F>>>);
-    fn verify(&self, vk: &CS::VK, preprocessed_commitments: Vec<CS::C>, commitments_from_proof: Vec<CS::C>, evals_from_proof: Vec<Vec<Vec<F>>>, cs_proof: AggregateProof<F, CS>) -> bool;
+    fn prove(&mut self, ck: &CS::CK) -> (Self::Proof, Vec<CS::C>, Vec<Vec<Vec<F>>>);
+    fn verify(&self, vk: &CS::VK, preprocessed_commitments: Vec<CS::C>, commitments_from_proof: Vec<CS::C>, evals_from_proof: Vec<Vec<Vec<F>>>, cs_proof: Self::Proof) -> bool;
 }
 
 
