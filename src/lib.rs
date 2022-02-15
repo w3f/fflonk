@@ -15,7 +15,6 @@ pub mod fflonk;
 pub mod pcs;
 pub mod utils;
 pub mod aggregation;
-mod plonk;
 
 
 pub type Poly<F> = DensePolynomial<F>; // currently SparsePolynomial doesn't implement UVPolynomial anyway

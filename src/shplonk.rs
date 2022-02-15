@@ -13,6 +13,7 @@ pub struct Shplonk<F: PrimeField, CS: PCS<F>> {
     _pcs: PhantomData<CS>,
 }
 
+#[derive(Clone)]
 pub struct AggregateProof<F: PrimeField, CS: PCS<F>> {
     agg_proof: CS::C,
     opening_proof: CS::Proof,
