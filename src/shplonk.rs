@@ -14,7 +14,7 @@ pub struct Shplonk<F: PrimeField, CS: PCS<F>> {
 }
 
 impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
-    pub fn open_many<T: Transcript<F, CS::C>>(
+    pub fn open_many<T: Transcript<F, CS>>(
         ck: &CS::CK,
         fs: &[Poly<F>],
         xss: &[HashSet<F>],
@@ -27,7 +27,7 @@ impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
         (agg_proof, opening_proof)
     }
 
-    pub fn verify_many<T: Transcript<F, CS::C>>(
+    pub fn verify_many<T: Transcript<F, CS>>(
         vk: &CS::VK,
         fcs: &[CS::C],
         proof: (CS::C, CS::Proof),
