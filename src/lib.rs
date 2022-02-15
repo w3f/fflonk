@@ -8,7 +8,7 @@ use aggregation::multiple::Transcript;
 
 use crate::fflonk::Fflonk;
 use crate::pcs::PCS;
-use crate::shplonk::Shplonk;
+use crate::shplonk::{Shplonk, AggregateProof};
 
 pub mod shplonk;
 pub mod fflonk;
@@ -49,7 +49,7 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
         // TODO: ts can be inferred from li := len(fss[i]) as ti = min(x : x >= li and x | p-1)
         rootss: &[Vec<F>], // sets of opening points per a combined polynomial presented as t-th roots
         transcript: &mut T,
-    ) -> (CS::C, CS::Proof)
+    ) -> AggregateProof<F, CS>
     {
         let k = fss.len();
         assert_eq!(k, ts.len());
@@ -73,7 +73,7 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
         vk: &CS::VK,
         gcs: &[CS::C],
         ts: &[usize],
-        proof: (CS::C, CS::Proof),
+        proof: AggregateProof<F, CS>,
         rootss: &[Vec<F>],
         vss: &[Vec<Vec<F>>],
         transcript: &mut T,
@@ -95,7 +95,7 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
         t: usize, // lengths of the combination
         roots: &[F], // set of opening points presented as t-th roots
         transcript: &mut T,
-    ) -> (CS::C, CS::Proof)
+    ) -> AggregateProof<F, CS>
     {
         Self::open(ck, &[fs.to_vec()], &[t], &[roots.to_vec()], transcript)
     }
@@ -104,7 +104,7 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
         vk: &CS::VK,
         gc: &CS::C,
         t: usize,
-        proof: (CS::C, CS::Proof),
+        proof: AggregateProof<F, CS>,
         roots: &[F],
         vss: &[Vec<F>], // evaluations per point // TODO: shplonk provides API with evals per polynomial
         transcript: &mut T,
