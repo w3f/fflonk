@@ -9,6 +9,7 @@ use fflonk::fflonk::Fflonk;
 use ark_std::{end_timer, start_timer};
 use fflonk::pcs::PcsParams;
 use fflonk::shplonk::AggregateProof;
+use std::marker::PhantomData;
 
 
 impl<F: PrimeField> VanillaPlonkAssignments<F, Radix2EvaluationDomain<F>> {
@@ -65,16 +66,14 @@ impl<F: PrimeField> Combination<F> {
 
 struct PlonkWithFflonkTest<F: PrimeField, CS: PCS<F>> {
     combinations: Vec<Combination<F>>,
-    commitments: Vec<CS::C>,
-    evals: Vec<Vec<Vec<F>>>,
+    cs: PhantomData<CS>,
 }
 
 impl<F: PrimeField, CS: PCS<F>> PlonkWithFflonkTest<F, CS> {
     fn new(combinations: Vec<Combination<F>>) -> Self {
         Self {
             combinations,
-            commitments: vec![],
-            evals: vec![],
+            cs: PhantomData,
         }
     }
 
@@ -139,36 +138,28 @@ impl<F: PrimeField, CS: PCS<F>> DecoyPlonk<F, CS> for PlonkWithFflonkTest<F, CS>
         let t_preprocessing = start_timer!(|| "Preprocessing");
         let commitment = self._commit_single(0, ck);
         end_timer!(t_preprocessing);
-
-        self.commitments.push(commitment.clone());
         vec![commitment]
     }
 
-    fn prove(&mut self, ck: &CS::CK) -> AggregateProof<F, CS> {//{//-> (&Vec<CS::C>, &(CS::C, CS::Proof), &Vec<Vec<Vec<F>>>) {
+    fn prove(&mut self, ck: &CS::CK) -> (AggregateProof<F, CS>, Vec<CS::C>, Vec<Vec<Vec<F>>>) {
         let empty_transcript = &mut merlin::Transcript::new(b"plonk-fflonk-shplonk-kzg");
         let t_proving = start_timer!(|| "Proving");
         let commitments = self._commit_proof_polynomials(ck);
         let proof = self._open(empty_transcript, ck);
         end_timer!(t_proving);
-        self.evals = self._evaluate();
-
-        assert_eq!(self.evals.len(), self.combinations.len());
-        assert_eq!(self.evals[0].len(), self.combinations[0].roots_of_xs.len());
-        assert_eq!(self.evals[0][0].len(), self.combinations[0].fs.len());
-
-        self.commitments.extend_from_slice(&commitments);
-        // (&self.commitments, self.proof.as_ref().unwrap(), &self.evals)
-        proof
+        let evals = self._evaluate();
+        (proof, commitments, evals)
     }
 
-    fn verify(&self, vk: &CS::VK, proof: AggregateProof<F, CS>) -> bool {
+    fn verify(&self, vk: &CS::VK, preprocessed_commitments: Vec<CS::C>, commitments_from_proof: Vec<CS::C>, evals_from_proof: Vec<Vec<Vec<F>>>, proof: AggregateProof<F, CS>) -> bool {
         let empty_transcript = &mut merlin::Transcript::new(b"plonk-fflonk-shplonk-kzg");
         let (ts, xss): (Vec<_>, Vec<_>) =
             self.combinations.iter()
                 .map(|c| (c.t(), c.roots_of_xs.clone()))
                 .unzip();
 
-        FflonkyKzg::<F, CS>::verify(vk, &self.commitments, &ts, proof, &xss, &self.evals, empty_transcript)
+        let commitments = [preprocessed_commitments, commitments_from_proof].concat();
+        FflonkyKzg::<F, CS>::verify(vk, &commitments, &ts, proof, &xss, &evals_from_proof, empty_transcript)
     }
 }
 
@@ -184,8 +175,11 @@ fn _test_vanilla_plonk_opening<F: PrimeField, CS: PCS<F>>(log_n: usize) {
 
     let (ck, vk) = test.setup(rng);
     let commitments_to_preprocessed_polynomials = test.preprocess(&ck);
-    let proof = test.prove(&ck);
-    assert!(test.verify(&vk, proof));
+    let (cs_proof, commitments, evals) = test.prove(&ck);
+    // assert_eq!(self.evals.len(), self.combinations.len());
+    // assert_eq!(self.evals[0].len(), self.combinations[0].roots_of_xs.len());
+    // assert_eq!(self.evals[0][0].len(), self.combinations[0].fs.len());
+    assert!(test.verify(&vk, commitments_to_preprocessed_polynomials, commitments, evals, cs_proof));
 }
 
 #[test]
