@@ -1,19 +1,17 @@
 #[cfg(test)]
 mod tests {
-    use crate::{Poly, FflonkyKzg};
+    use fflonk::{Poly, FflonkyKzg};
     use ark_std::test_rng;
     use ark_poly::{UVPolynomial, Polynomial};
     use ark_std::rand::Rng;
     use ark_ff::{PrimeField, UniformRand, Zero};
     use ark_poly::EvaluationDomain;
-    use crate::tests::{TestKzg, TestCurve, TestField};
-    use crate::pcs::{PCS, PcsParams};
+    use fflonk::pcs::{PCS, PcsParams};
     use ark_std::{end_timer, start_timer};
-    use crate::fflonk::Fflonk;
-    use crate::aggregation::multiple::Transcript;
+    use fflonk::fflonk::Fflonk;
     use std::marker::PhantomData;
     use ark_poly::Radix2EvaluationDomain;
-
+    use ark_ec::PairingEngine;
 
     struct VanillaPlonk<F: PrimeField, D: EvaluationDomain<F>> {
         domain: D,
@@ -105,17 +103,16 @@ mod tests {
         }
     }
 
-    struct PlonkWithFflonkTest<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS>> {
+    struct PlonkWithFflonkTest<F: PrimeField, CS: PCS<F>> {
         combinations: Vec<Combination<F>>,
         ck: Option<CS::CK>,
         vk: Option<CS::VK>,
         commitments: Vec<CS::C>,
         proof: Option<(CS::C, CS::Proof)>,
         evals: Vec<Vec<Vec<F>>>,
-        _transcript: PhantomData<T>,
     }
 
-    impl<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS>> PlonkWithFflonkTest<F, CS, T> {
+    impl<F: PrimeField, CS: PCS<F>> PlonkWithFflonkTest<F, CS> {
         fn new(combinations: Vec<Combination<F>>) -> Self {
             Self {
                 combinations,
@@ -124,7 +121,6 @@ mod tests {
                 commitments: vec![],
                 proof: None,
                 evals: vec![],
-                _transcript: Default::default(),
             }
         }
 
@@ -134,7 +130,7 @@ mod tests {
                 .max().unwrap();
 
             let t_setup = start_timer!(|| format!("KZG setup of degree {} on {}",
-                urs_degree, crate::utils::curve_name::<TestCurve>()));
+                urs_degree, fflonk::utils::curve_name::<TestCurve>()));
             let params = CS::setup(urs_degree, rng);
             end_timer!(t_setup);
 
@@ -151,10 +147,10 @@ mod tests {
             commitment
         }
 
-        fn prove(&mut self, transcript: &mut T) -> (&Vec<CS::C>, &(CS::C, CS::Proof), &Vec<Vec<Vec<F>>>) {
+        fn prove(&mut self, empty_transcript: &mut merlin::Transcript) -> (&Vec<CS::C>, &(CS::C, CS::Proof), &Vec<Vec<Vec<F>>>) {
             let t_proving = start_timer!(|| "Proving");
             let commitments = self._commit_proof();
-            let proof = self._open(transcript);
+            let proof = self._open(empty_transcript);
             end_timer!(t_proving);
             self.evals = self._evaluate();
             self.commitments.extend_from_slice(&commitments);
@@ -188,7 +184,7 @@ mod tests {
             commitment
         }
 
-        fn _open(&self, transcript: &mut T) -> (CS::C, CS::Proof) {
+        fn _open(&self, transcript: &mut merlin::Transcript) -> (CS::C, CS::Proof) {
             let (ts, (fss, xss)): (Vec<_>, (Vec<_>, Vec<_>)) =
                 self.combinations.iter()
                     .map(|c| (c.t(), (c.fs.clone(), c.roots_of_xs.clone())))
@@ -205,13 +201,13 @@ mod tests {
                 .map(|c| c.yss()).collect()
         }
 
-        fn verify(&self, transcript: &mut T) {
+        fn verify(&self, empty_transcript: &mut merlin::Transcript) {
             let (ts, xss): (Vec<_>, Vec<_>) =
                 self.combinations.iter()
                     .map(|c| (c.t(), c.roots_of_xs.clone()))
                     .unzip();
 
-            let result = FflonkyKzg::<F, CS>::verify(&self.vk.as_ref().unwrap(), &self.commitments, &ts, self.proof.as_ref().unwrap().clone(), &xss, &self.evals, transcript);
+            let result = FflonkyKzg::<F, CS>::verify(&self.vk.as_ref().unwrap(), &self.commitments, &ts, self.proof.as_ref().unwrap().clone(), &xss, &self.evals, empty_transcript);
             assert!(result);
         }
     }
@@ -224,18 +220,25 @@ mod tests {
         let piop = VanillaPlonk::<F, _>::new(n, rng);
         let combinations = piop.combinations();
 
-        let mut test = PlonkWithFflonkTest::<F, CS, _>::new(combinations);
 
-        let transcript = &mut (F::rand(rng), F::rand(rng));
+        let mut test = PlonkWithFflonkTest::<F, CS>::new(combinations);
+
+
+
+
+
 
         test.setup(rng);
         test.preprocess();
-        test.prove(transcript);
-        test.verify(transcript);
+        let prover_transcript = &mut merlin::Transcript::new(b"plonk-fflonk-shplonk-kzg");
+        let verifier_transcript = &mut merlin::Transcript::new(b"plonk-fflonk-shplonk-kzg");
+        test.prove(prover_transcript);
+        test.verify(verifier_transcript);
     }
 
     #[test]
-    fn test_vanilla_plonk_opening() {
-        _test_vanilla_plonk_opening::<TestField, TestKzg>(8);
+    fn test_vanilla_plonk_opening2() {
+        assert!(cfg!(test));
+        _test_vanilla_plonk_opening::<_, fflonk::pcs::kzg::KZG<ark_bls12_381::Bls12_381>>(8);
     }
 }

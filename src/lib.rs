@@ -18,7 +18,7 @@ pub mod aggregation;
 mod plonk;
 
 
-type Poly<F> = DensePolynomial<F>; // currently SparsePolynomial doesn't implement UVPolynomial anyway
+pub type Poly<F> = DensePolynomial<F>; // currently SparsePolynomial doesn't implement UVPolynomial anyway
 
 pub trait EuclideanPolynomial<F: PrimeField> {
     fn divide_with_q_and_r(&self, divisor: &Poly<F>) -> (Poly<F>, Poly<F>);
