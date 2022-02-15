@@ -16,14 +16,14 @@ pub struct MultipointClaim<F: PrimeField, C: Commitment<F>> {
     pub ys: Vec<F>,
 }
 
-pub trait Transcript<F, G> {
+pub trait Transcript<F: PrimeField, CS: PCS<F>> {
     fn get_gamma(&mut self) -> F;
-    fn commit_to_q(&mut self, q_comm: &G);
+    fn commit_to_q(&mut self, q: &CS::C);
     fn get_zeta(&mut self) -> F;
 }
 
 
-pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
+pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS>>(
     ck: &CS::CK,
     fs: &[Poly<F>],
     xss: &[HashSet<F>],
@@ -61,7 +61,8 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
     // By (**) qi = (fi - ri) / zi, thus q = sum(gamma^i * qi)
     let q = poly::sum_with_powers(gamma, &qs);
     let t_commit = start_timer!(|| format!("commitment to a degree-{} polynomial", q.degree()));
-    let qc = CS::commit(ck, &q); // "W" in the paper
+    let qc = CS::commit(ck, &q);
+    // "W" in the paper
     end_timer!(t_commit);
     transcript.commit_to_q(&qc);
 
@@ -120,7 +121,7 @@ pub fn group_by_commitment<F: PrimeField, C: Commitment<F>>(
         .collect()
 }
 
-pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS::C>>(
+pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS>>(
     claims: Vec<MultipointClaim<F, CS::C>>,
     qc: &CS::C,
     onec: &CS::C,
@@ -174,14 +175,6 @@ mod tests {
     use crate::pcs::tests::IdentityCommitment;
     use crate::shplonk::tests::{random_opening, random_xss};
     use crate::tests::{TestField, TestKzg, BenchField, BenchKzg, BENCH_DEG_LOG1};
-
-    impl<F: PrimeField, G> Transcript<F, G> for (F, F) {
-        fn get_gamma(&mut self) -> F { self.0 }
-
-        fn commit_to_q(&mut self, _q_comm: &G) {}
-
-        fn get_zeta(&mut self) -> F { self.1 }
-    }
 
     #[test]
     fn test_get_coeffs() {
