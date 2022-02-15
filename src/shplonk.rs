@@ -13,30 +13,35 @@ pub struct Shplonk<F: PrimeField, CS: PCS<F>> {
     _pcs: PhantomData<CS>,
 }
 
+pub struct AggregateProof<F: PrimeField, CS: PCS<F>> {
+    agg_proof: CS::C,
+    opening_proof: CS::Proof,
+}
+
 impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
     pub fn open_many<T: Transcript<F, CS>>(
         ck: &CS::CK,
         fs: &[Poly<F>],
         xss: &[HashSet<F>],
         transcript: &mut T,
-    ) -> (CS::C, CS::Proof)
+    ) -> AggregateProof<F, CS>
     {
         let (agg_poly, zeta, agg_proof) = aggregate_polys::<F, CS, T>(ck, fs, xss, transcript);
         assert!(agg_poly.evaluate(&zeta).is_zero());
         let opening_proof = CS::open(ck, &agg_poly, zeta);
-        (agg_proof, opening_proof)
+        AggregateProof {agg_proof, opening_proof}
     }
 
     pub fn verify_many<T: Transcript<F, CS>>(
         vk: &CS::VK,
         fcs: &[CS::C],
-        proof: (CS::C, CS::Proof),
+        proof: AggregateProof<F, CS>,
         xss: &Vec<Vec<F>>,
         yss: &Vec<Vec<F>>,
         transcript: &mut T,
     ) -> bool
     {
-        let (agg_proof, opening_proof) = proof;
+        let AggregateProof {agg_proof, opening_proof} = proof;
         let onec = CS::commit(&vk.clone().into(), &Poly::from_coefficients_slice(&[F::one()]));
         let claims = group_by_commitment(fcs, xss, yss);
         let agg_claim = aggregate_claims::<F, CS, T>(claims, &agg_proof, &onec, transcript);
