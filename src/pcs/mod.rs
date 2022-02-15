@@ -17,6 +17,8 @@ Eq
 + Add<Self, Output=Self>
 + Sub<Self, Output=Self>
 + Sum<Self>
++ CanonicalSerialize
++ CanonicalDeserialize
 {
     fn mul(&self, by: F) -> Self;
     fn combine(coeffs: &[F], commitments: &[Self]) -> Self;
@@ -79,8 +81,9 @@ pub(crate) mod tests {
 
     use super::*;
     use crate::utils::poly;
+    use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
 
-    #[derive(Clone, PartialEq, Eq, Debug)]
+    #[derive(Clone, PartialEq, Eq, Debug, CanonicalSerialize, CanonicalDeserialize)]
     pub struct WrappedPolynomial<F: PrimeField>(pub Poly<F>);
 
     impl<F: PrimeField> WrappedPolynomial<F> {
