@@ -158,6 +158,11 @@ impl<F: PrimeField, CS: PCS<F>> PlonkTest for PlonkWithFflonkTest<F, CS> {
         let proof = self._open(empty_transcript);
         end_timer!(t_proving);
         self.evals = self._evaluate();
+
+        assert_eq!(self.evals.len(), self.combinations.len());
+        assert_eq!(self.evals[0].len(), self.combinations[0].roots_of_xs.len());
+        assert_eq!(self.evals[0][0].len(), self.combinations[0].fs.len());
+
         self.commitments.extend_from_slice(&commitments);
         self.proof = Some(proof);
         // (&self.commitments, self.proof.as_ref().unwrap(), &self.evals)
