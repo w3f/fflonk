@@ -8,12 +8,15 @@ use crate::aggregation::multiple::{aggregate_claims, aggregate_polys, Transcript
 use crate::pcs::PCS;
 use crate::Poly;
 
+use ark_serialize::*;
+use ark_std::io::{Read, Write};
+
 pub struct Shplonk<F: PrimeField, CS: PCS<F>> {
     _field: PhantomData<F>,
     _pcs: PhantomData<CS>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct AggregateProof<F: PrimeField, CS: PCS<F>> {
     agg_proof: CS::C,
     opening_proof: CS::Proof,

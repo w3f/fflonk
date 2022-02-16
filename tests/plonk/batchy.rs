@@ -1,14 +1,15 @@
 use std::marker::PhantomData;
 use ark_ff::{PrimeField, UniformRand};
 use fflonk::pcs::{PCS, PcsParams, Commitment};
-use crate::{DecoyPlonk, VanillaPlonkAssignments, _test_vanilla_plonk_opening};
+use crate::{DecoyPlonk, VanillaPlonkAssignments};
 use fflonk::Poly;
 use ark_poly::{Polynomial, UVPolynomial};
 use ark_std::rand::Rng;
 use ark_std::{end_timer, start_timer, test_rng};
 use fflonk::utils::poly;
-use ark_bls12_381::Bls12_381;
-use fflonk::pcs::kzg::KZG;
+use ark_serialize::*;
+use ark_std::io::{Read, Write};
+
 
 impl<F: PrimeField> VanillaPlonkAssignments<F> {
     fn constraints(&self) -> Vec<Poly<F>> {
@@ -76,7 +77,7 @@ impl<F: PrimeField> Challenges<F> {
     }
 }
 
-struct PlonkBatchKzgTest<F: PrimeField, CS: PCS<F>> {
+pub struct PlonkBatchKzgTest<F: PrimeField, CS: PCS<F>> {
     polys: VanillaPlonkAssignments<F>,
     linearization_polynomial: Poly<F>,
     challenges: Challenges<F>,
@@ -100,7 +101,8 @@ impl<F: PrimeField, CS: PCS<F>> PlonkBatchKzgTest<F, CS> {
     }
 }
 
-struct BatchyPlonkProof<F: PrimeField, CS: PCS<F>> {
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
+pub struct BatchyPlonkProof<F: PrimeField, CS: PCS<F>> {
     wire_polynomials_c: Vec<CS::C>,
     permutation_polynomial_c: CS::C,
     quotient_polynomial_c: CS::C,
@@ -214,9 +216,3 @@ impl<F: PrimeField, CS: PCS<F>> DecoyPlonk<F, CS> for PlonkBatchKzgTest<F, CS> {
         valid
     }
 }
-
-#[test]
-fn test_vanilla_plonk_batch_kzg_opening() {
-    _test_vanilla_plonk_opening::<_, KZG<Bls12_381>, PlonkBatchKzgTest<_, _>>(16);
-}
-

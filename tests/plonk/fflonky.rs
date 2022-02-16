@@ -2,7 +2,7 @@ use ark_ff::{PrimeField, UniformRand, Zero};
 use ark_poly::Polynomial;
 use ark_std::test_rng;
 use fflonk::{Poly, FflonkyKzg};
-use crate::{VanillaPlonkAssignments, DecoyPlonk, _test_vanilla_plonk_opening};
+use crate::{VanillaPlonkAssignments, DecoyPlonk};
 use fflonk::pcs::PCS;
 use ark_std::rand::Rng;
 use fflonk::fflonk::Fflonk;
@@ -10,8 +10,8 @@ use ark_std::{end_timer, start_timer};
 use fflonk::pcs::PcsParams;
 use fflonk::shplonk::AggregateProof;
 use std::marker::PhantomData;
-use fflonk::pcs::kzg::KZG;
-use ark_bls12_381::Bls12_381;
+use ark_serialize::*;
+use ark_std::io::{Read, Write};
 
 
 impl<F: PrimeField> VanillaPlonkAssignments<F> {
@@ -66,7 +66,7 @@ impl<F: PrimeField> Combination<F> {
     }
 }
 
-struct PlonkWithFflonkTest<F: PrimeField, CS: PCS<F>> {
+pub struct PlonkWithFflonkTest<F: PrimeField, CS: PCS<F>> {
     combinations: Vec<Combination<F>>,
     cs: PhantomData<CS>,
 }
@@ -116,7 +116,8 @@ impl<F: PrimeField, CS: PCS<F>> PlonkWithFflonkTest<F, CS> {
     }
 }
 
-struct FflonkyPlonkProof<F: PrimeField, CS: PCS<F>> {
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
+pub struct FflonkyPlonkProof<F: PrimeField, CS: PCS<F>> {
     cs_proof: AggregateProof<F, CS>,
     evals: Vec<Vec<Vec<F>>>,
     commitments: Vec<CS::C>,
@@ -163,10 +164,4 @@ impl<F: PrimeField, CS: PCS<F>> DecoyPlonk<F, CS> for PlonkWithFflonkTest<F, CS>
         let commitments = [preprocessed_commitments, proof.commitments].concat();
         FflonkyKzg::<F, CS>::verify(vk, &commitments, &ts, proof.cs_proof, &xss, &proof.evals, empty_transcript)
     }
-}
-
-
-#[test]
-fn test_vanilla_plonk_with_fflonk_opening() {
-    _test_vanilla_plonk_opening::<_, KZG<Bls12_381>, PlonkWithFflonkTest<_, _>>(16);
 }
