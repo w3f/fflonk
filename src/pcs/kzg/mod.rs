@@ -98,8 +98,8 @@ impl<E: PairingEngine> PCS<E::Fr> for KZG<E> {
     type C = KzgCommitment<E>;
     type Proof = E::G1Affine;
 
-    type VK = KzgVerifierKey<E>;
     type CK = KzgCommitterKey<E::G1Affine>;
+    type VK = KzgVerifierKey<E>;
     type Params = URS<E>;
 
     fn setup<R: Rng>(max_degree: usize, rng: &mut R) -> Self::Params {
@@ -126,6 +126,15 @@ impl<E: PairingEngine> PCS<E::Fr> for KZG<E> {
     fn verify(vk: &KzgVerifierKey<E>, c: Self::C, x: E::Fr, y: E::Fr, proof: Self::Proof) -> bool {
         let opening = KzgOpening { c: c.0, x, y, proof };
         Self::verify_single(opening, vk)
+    }
+
+    fn batch_verify<R: Rng>(vk: &KzgVerifierKey<E>, c: Vec<Self::C>, x: Vec<E::Fr>, y: Vec<E::Fr>, proof: Vec<Self::Proof>, rng: &mut R) -> bool {
+        assert_eq!(c.len(), x.len());
+        assert_eq!(c.len(), y.len());
+        let openings = c.into_iter().zip(x.into_iter()).zip(y.into_iter()).zip(proof.into_iter())
+            .map(|(((c, x), y), proof)| KzgOpening {c: c.0, x, y, proof})
+            .collect();
+        Self::verify_batch(openings, vk, rng)
     }
 }
 
