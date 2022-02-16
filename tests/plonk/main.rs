@@ -15,6 +15,7 @@ use std::marker::PhantomData;
 use ark_poly::Radix2EvaluationDomain;
 use ark_ec::PairingEngine;
 use fflonk::shplonk::AggregateProof;
+use ark_bls12_381::Bls12_381;
 
 struct VanillaPlonkAssignments<F: PrimeField> {
     domain_size: usize,
@@ -87,7 +88,7 @@ fn _test_vanilla_plonk_opening<F: PrimeField, CS: PCS<F>, T: DecoyPlonk<F, CS>>(
 
     let mut test = T::new(polys, rng);
 
-    let t_test = start_timer!(|| format!("domain_size = {},  curve = {}", n, fflonk::utils::curve_name::<TestCurve>()));
+    let t_test = start_timer!(|| format!("domain_size = {},  curve = {}", n, fflonk::utils::curve_name::<Bls12_381>()));
 
     let t_setup = start_timer!(|| "Setup");
     let (ck, vk) = test.setup(rng);

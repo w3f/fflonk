@@ -12,6 +12,7 @@ use fflonk::aggregation::single::aggregate_claims_multiexp;
 use ark_bls12_381::{Fr, Bls12_381};
 use fflonk::pcs::kzg::{KzgOpening, KZG};
 use ark_ec::PairingEngine;
+use fflonk::utils::ec::small_multiexp_affine;
 
 impl<F: PrimeField> VanillaPlonkAssignments<F> {
     fn constraints(&self) -> Vec<Poly<F>> {
@@ -64,7 +65,7 @@ struct Challenges<F: PrimeField> {
     nus: Vec<F>,
 }
 
-impl <F: PrimeField> Challenges<F> {
+impl<F: PrimeField> Challenges<F> {
     fn new<R: Rng>(rng: &mut R) -> Self {
         let beta_gamma: (F, F) = (Self::get_128_bit_challenge(rng), Self::get_128_bit_challenge(rng));
         let alpha: F = Self::get_128_bit_challenge(rng);
@@ -136,7 +137,6 @@ impl<F: PrimeField, CS: PCS<F>> DecoyPlonk<F, CS> for PlonkBatchKzgTest<F, CS> {
     }
 
     fn prove(&mut self, ck: &CS::CK) -> BatchyPlonkProof<F, CS> {
-
         let wire_polynomials_c = self.commit_polynomials(ck, &self.polys.polys_to_commit_1());
         let permutation_polynomial_c = self.commit_polynomial(ck, &self.polys.poly_to_commit_2(self.challenges.beta_gamma));
         let quotient_polynomial_c = self.commit_polynomial(ck, &self.polys.poly_to_commit_3(self.challenges.alpha));
@@ -157,8 +157,10 @@ impl<F: PrimeField, CS: PCS<F>> DecoyPlonk<F, CS> for PlonkBatchKzgTest<F, CS> {
         let proof_at_zeta_omega = CS::open(ck, &self.polys.poly_to_open_at_zeta_omega_5(), zeta_omega);
 
         // TODO: compute
+        let t_extra = start_timer!(|| "Extra: commiting to the linearization polynomial");
         let extra_comm = self.commit_polynomial(ck, &linearization_polynomial);
         let extra_eval = linearization_polynomial.evaluate(&zeta);
+        end_timer!(t_extra);
 
         BatchyPlonkProof {
             wire_polynomials_c,
@@ -173,8 +175,15 @@ impl<F: PrimeField, CS: PCS<F>> DecoyPlonk<F, CS> for PlonkBatchKzgTest<F, CS> {
     }
 
     fn verify(&self, vk: &CS::VK, preprocessed_commitments: Vec<CS::C>, proof: BatchyPlonkProof<F, CS>) -> bool {
-        let t_kzg = start_timer!(|| "KZG batch verification");
+        // TODO:
+        let t_reconstruct = start_timer!(|| "Reconstructing the commitment to the linearization polynomial: 7-multiexp");
+        let bases = [&preprocessed_commitments[0..4], &vec![proof.permutation_polynomial_c.clone(), preprocessed_commitments[7].clone(), proof.quotient_polynomial_c]].concat();
+        assert_eq!(bases.len(), 7); // [q_C]_1 has exp = 1
+        let coeffs = (0..7).map(|_| F::rand(&mut test_rng())).collect::<Vec<_>>();
+        let _comm = CS::C::combine(&coeffs, &bases);
+        end_timer!(t_reconstruct);
 
+        let t_kzg = start_timer!(|| "KZG batch verification");
         let (agg_comm, agg_eval) = {
             let t_aggregate_claims = start_timer!(|| "aggregate evaluation claims at zeta");
 
@@ -212,6 +221,6 @@ impl<F: PrimeField, CS: PCS<F>> DecoyPlonk<F, CS> for PlonkBatchKzgTest<F, CS> {
 
 #[test]
 fn test_vanilla_plonk_batch_kzg_opening() {
-    _test_vanilla_plonk_opening::<_, KZG<Bls12_381>, PlonkBatchKzgTest<_, _>>(8);
+    _test_vanilla_plonk_opening::<_, KZG<Bls12_381>, PlonkBatchKzgTest<_, _>>(16);
 }
 
