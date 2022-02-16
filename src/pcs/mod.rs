@@ -56,7 +56,7 @@ pub trait PcsParams<CK, VK> {
 pub trait PCS<F: PrimeField> {
     type C: Commitment<F>;
 
-    type Proof;
+    type Proof: Clone + CanonicalSerialize + CanonicalDeserialize;
 
     type CK: CommitterKey;
     type VK: VerifierKey + Into<Self::CK>;

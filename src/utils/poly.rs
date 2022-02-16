@@ -29,7 +29,7 @@ pub(crate) fn z_of_set<'a, F: FftField>(xs: impl IntoIterator<Item=&'a F>) -> De
 }
 
 
-pub(crate) fn sum_with_coeffs<F: Field, P: Polynomial<F>>(
+pub fn sum_with_coeffs<F: Field, P: Polynomial<F>>(
     coeffs: Vec<F>,
     polys: &[P],
 ) -> P {
@@ -42,7 +42,7 @@ pub(crate) fn sum_with_coeffs<F: Field, P: Polynomial<F>>(
 }
 
 
-pub(crate) fn sum_with_powers<F: Field, P: Polynomial<F>>(
+pub fn sum_with_powers<F: Field, P: Polynomial<F>>(
     r: F,
     polys: &[P],
 ) -> P {

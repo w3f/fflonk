@@ -1,5 +1,4 @@
-use ark_ec::{PairingEngine, AffineCurve};
-use ark_ff::{PrimeField, Field};
+use ark_ff::PrimeField;
 use crate::aggregation::multiple::Transcript;
 use crate::pcs::PCS;
 use ark_serialize::CanonicalSerialize;
