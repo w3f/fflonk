@@ -18,6 +18,7 @@ use fflonk::shplonk::AggregateProof;
 
 struct VanillaPlonkAssignments<F: PrimeField> {
     domain_size: usize,
+    degree: usize,
     max_degree: usize,
 
     // [Poly<F>; 8], max_deg = d
@@ -42,21 +43,22 @@ fn random_polynomials<F: PrimeField, R: Rng>(k: usize, degree: usize, rng: &mut 
 }
 
 impl<F: PrimeField> VanillaPlonkAssignments<F> {
-
     fn new<R: Rng>(n: usize, rng: &mut R) -> Self {
         let domain_size = n;
-        let max_degree = n - 1;
+        let degree = n - 1;
+        let max_degree = 3 * degree; // permutation_constraint_2 / Z
         let domain = Radix2EvaluationDomain::<F>::new(n).unwrap();
         let omega = domain.group_gen;
         Self {
             domain_size,
+            degree,
             max_degree,
-            preprocessed_polynomials: random_polynomials(8, max_degree, rng),
-            wire_polynomials: random_polynomials(3, max_degree, rng),
-            permutation_polynomial: Poly::rand(max_degree, rng),
-            arithmetic_constraint: Poly::rand(3 * max_degree, rng),
-            permutation_constraint_1: Poly::rand(2 * max_degree, rng),
-            permutation_constraint_2: Poly::rand(4 * max_degree, rng),
+            preprocessed_polynomials: random_polynomials(8, degree, rng),
+            wire_polynomials: random_polynomials(3, degree, rng),
+            permutation_polynomial: Poly::rand(degree, rng),
+            arithmetic_constraint: Poly::rand(3 * degree, rng),
+            permutation_constraint_1: Poly::rand(2 * degree, rng),
+            permutation_constraint_2: Poly::rand(4 * degree, rng),
             domain,
             omega,
         }
@@ -69,10 +71,42 @@ impl<F: PrimeField> VanillaPlonkAssignments<F> {
 
 trait DecoyPlonk<F: PrimeField, CS: PCS<F>> {
     type Proof;
+
+    fn new<R: Rng>(polys: VanillaPlonkAssignments<F>, rng: &mut R) -> Self;
+
     fn setup<R: Rng>(&mut self, rng: &mut R) -> (CS::CK, CS::VK);
     fn preprocess(&mut self, ck: &CS::CK) -> Vec<CS::C>;
-    fn prove(&mut self, ck: &CS::CK) -> (Self::Proof, Vec<CS::C>);
-    fn verify(&self, vk: &CS::VK, preprocessed_commitments: Vec<CS::C>, commitments_from_proof: Vec<CS::C>, cs_proof: Self::Proof) -> bool;
+    fn prove(&mut self, ck: &CS::CK) -> Self::Proof;
+    fn verify(&self, vk: &CS::VK, preprocessed_commitments: Vec<CS::C>, proof: Self::Proof) -> bool;
 }
 
+fn _test_vanilla_plonk_opening<F: PrimeField, CS: PCS<F>, T: DecoyPlonk<F, CS>>(log_n: usize) {
+    let rng = &mut test_rng();
+    let n = 1 << log_n;
+    let polys = VanillaPlonkAssignments::<F>::new(n, rng);
+
+    let mut test = T::new(polys, rng);
+
+    let t_test = start_timer!(|| format!("domain_size = {},  curve = {}", n, fflonk::utils::curve_name::<TestCurve>()));
+
+    let t_setup = start_timer!(|| "Setup");
+    let (ck, vk) = test.setup(rng);
+    end_timer!(t_setup);
+
+    let t_preprocess = start_timer!(|| "Preprocessing");
+    let commitments_to_preprocessed_polynomials = test.preprocess(&ck);
+    end_timer!(t_preprocess);
+
+    let t_prove = start_timer!(|| "Proving");
+    let proof = test.prove(&ck);
+    end_timer!(t_prove);
+
+    let t_verify = start_timer!(|| "Verifying");
+    let valid = test.verify(&vk, commitments_to_preprocessed_polynomials, proof);
+    end_timer!(t_verify);
+
+    end_timer!(t_test);
+
+    assert!(valid);
+}
 

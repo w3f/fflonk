@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 use ark_ff::{PrimeField, UniformRand, One};
 use fflonk::pcs::{PCS, PcsParams, Commitment};
-use crate::{DecoyPlonk, VanillaPlonkAssignments, random_polynomials};
+use crate::{DecoyPlonk, VanillaPlonkAssignments, random_polynomials, _test_vanilla_plonk_opening};
 use fflonk::Poly;
 use ark_poly::{Radix2EvaluationDomain, Polynomial, EvaluationDomain, UVPolynomial};
 use fflonk::shplonk::AggregateProof;
@@ -22,189 +22,196 @@ impl<F: PrimeField> VanillaPlonkAssignments<F> {
         ]
     }
 
-    fn aggregated_constraints_quotient(&self, alpha: F) -> Poly<F> {
+    fn polys_to_commit_1(&self) -> Vec<Poly<F>> {
+        self.wire_polynomials.clone()
+    }
+
+    fn poly_to_commit_2(&self, _beta_gamma: (F, F)) -> Poly<F> {
+        self.permutation_polynomial.clone()
+    }
+
+    fn poly_to_commit_3(&self, alpha: F) -> Poly<F> {
         let aggregate_constraint = poly::sum_with_powers(alpha, &self.constraints());
         self.quotient(&aggregate_constraint)
     }
 
-    fn permutation_polynomial_at_zeta_omega(&self, zeta: F) -> F {
-        let zeta_omega = zeta * self.omega;
-        self.permutation_polynomial.evaluate(&zeta_omega)
+    fn polys_to_evaluate_at_zeta_4(&self) -> Vec<Poly<F>> {
+        [&self.wire_polynomials, &self.preprocessed_polynomials[5..7]].concat() // a, b, c, S_{sigma_1}, S_{sigma_2}
+    }
+
+    fn poly_to_evaluate_at_zeta_omega_4(&self) -> Poly<F> {
+        self.permutation_polynomial.clone()
+    }
+
+    fn polys_to_open_at_zeta_5(&self) -> Vec<Poly<F>> {
+        self.polys_to_evaluate_at_zeta_4()
+    }
+
+    fn poly_to_open_at_zeta_omega_5(&self) -> Poly<F> {
+        self.poly_to_evaluate_at_zeta_omega_4()
     }
 }
 
-struct PlonkBatchKzgTest<F: PrimeField, CS: PCS<F>> {
-    polys: VanillaPlonkAssignments<F>,
-
-    linearization_polynomial: Poly<F>,
+struct Challenges<F: PrimeField> {
     // verifier challenges in order:
-    // (beta, gamma): (F, F) // permutation argument challenges (aka "permutation challenges")
-    alpha: F,
+    // permutation argument challenges (aka "permutation challenges")
+    beta_gamma: (F, F),
     // constraint aggregation challenge (aka "quotient challenge")
+    alpha: F,
+    // evaluation challenge
     zeta: F,
-    // e evaluation challenge
-    nus: Vec<F>,
     // polynomial aggregation challenge (aka "opening challenge")
-    cs: PhantomData<CS>,
+    nus: Vec<F>,
 }
 
-impl<F: PrimeField, CS: PCS<F>> PlonkBatchKzgTest<F, CS> {
-    fn new(log_n: usize) -> Self {
-        let rng = &mut test_rng();
-
-        let n = 1 << log_n;
-
-        let polys = VanillaPlonkAssignments::<F>::new(n, rng);
-        let linearization_polynomial = Poly::rand(polys.max_degree, rng);
-
+impl <F: PrimeField> Challenges<F> {
+    fn new<R: Rng>(rng: &mut R) -> Self {
+        let beta_gamma: (F, F) = (Self::get_128_bit_challenge(rng), Self::get_128_bit_challenge(rng));
         let alpha: F = Self::get_128_bit_challenge(rng);
         let zeta: F = Self::get_128_bit_challenge(rng);
-        let nu = std::iter::once(F::one());
-        let nus = nu.chain((1..6).map(|_| Self::get_128_bit_challenge(rng))).collect();
-
-        Self {
-            polys,
-            linearization_polynomial,
-            alpha,
-            zeta,
-            nus,
-            cs: PhantomData,
-        }
+        let one = std::iter::once(F::one());
+        let nus = one.chain((1..6).map(|_| Self::get_128_bit_challenge(rng))).collect();
+        Self { beta_gamma, alpha, zeta, nus }
     }
 
     fn get_128_bit_challenge<R: Rng>(rng: &mut R) -> F {
         u128::rand(rng).into()
     }
+}
 
-    fn commit_polynomials(&self, ck: &CS::CK, polys: &Vec<Poly<F>>) -> Vec<CS::C> {
-        let t_commitment = start_timer!(|| format!("Committing to {} polynomials", polys.len()));
-        let commitments = polys.iter().map(|p| CS::commit(ck, &p)).collect();
+struct PlonkBatchKzgTest<F: PrimeField, CS: PCS<F>> {
+    polys: VanillaPlonkAssignments<F>,
+    linearization_polynomial: Poly<F>,
+    challenges: Challenges<F>,
+    cs: PhantomData<CS>,
+}
+
+impl<F: PrimeField, CS: PCS<F>> PlonkBatchKzgTest<F, CS> {
+    fn commit_polynomial(&self, ck: &CS::CK, poly: &Poly<F>) -> CS::C {
+        let t_commitment = start_timer!(|| format!("Committing to degree {} polynomials", poly.degree()));
+        let commitment = CS::commit(ck, poly);
+        end_timer!(t_commitment);
+        commitment
+    }
+
+    fn commit_polynomials(&self, ck: &CS::CK, polys: &[Poly<F>]) -> Vec<CS::C> {
+        let t_commitment = start_timer!(|| format!("Committing to batch of {} polynomials", polys.len()));
+        let commitments = polys.iter().map(|p| self.commit_polynomial(ck, p)).collect();
         end_timer!(t_commitment);
 
         commitments
     }
-
-    //TODO
-    fn polynomials_to_open_at_zeta(&self) -> Vec<Poly<F>> {
-        let mut res = vec![self.linearization_polynomial.clone()];
-        res.extend_from_slice(&self.polys.wire_polynomials);
-        let preprocessed_permutation_polynomials_1_and_2 = &self.polys.preprocessed_polynomials[5..7]; // S_{sigma_1}, S_{sigma_2}
-        res.extend_from_slice(preprocessed_permutation_polynomials_1_and_2);
-        assert_eq!(res.len(), 6);
-        assert_eq!(res.iter().map(|p| p.degree()).max().unwrap(), self.polys.max_degree);
-        res
-    }
-
-    fn aggregated_polynomial_to_open_in_zeta(&self, nus: Vec<F>) -> Poly<F> {
-        poly::sum_with_coeffs(nus, &self.polynomials_to_open_at_zeta())
-    }
-
-    fn evaluations_at_zeta(&self, zeta: F) -> Vec<F> {
-        let polys = self.polynomials_to_open_at_zeta();
-        assert_eq!(polys.len(), 6);
-        polys.iter().map(|p| p.evaluate(&zeta)).collect()
-    }
 }
 
-struct BatchyPlonkProof<F, C> {
-    aggregate_kzg_proof_at_zeta: C,
-    // [W_{\zeta}]_1
-    permutation_polynomial_kzg_proof_at_zeta_omega: C,
-    // [W_{\zeta\omega}]_1
+struct BatchyPlonkProof<F: PrimeField, CS: PCS<F>> {
+    wire_polynomials_c: Vec<CS::C>,
+    permutation_polynomial_c: CS::C,
+    quotient_polynomial_c: CS::C,
     evals_at_zeta: Vec<F>,
-    permutation_polynomial_at_zeta_omega: F,
+    evals_at_zeta_omega: F,
+    // [W_{\zeta}]_1
+    proof_at_zeta: CS::Proof,
+    // [W_{\zeta\omega}]_1
+    proof_at_zeta_omega: CS::Proof,
+    extra: (CS::C, F), // commitment and evaluation of the linearization poly //TODO: remove
 }
+
 
 impl<F: PrimeField, CS: PCS<F>> DecoyPlonk<F, CS> for PlonkBatchKzgTest<F, CS> {
-    type Proof = BatchyPlonkProof<F, CS::Proof>;
+    type Proof = BatchyPlonkProof<F, CS>;
 
-    fn setup<R: Rng>(&mut self, rng: &mut R) -> (<CS as PCS<F>>::CK, <CS as PCS<F>>::VK) {
-        let urs_degree = 123; //TODO
+    fn new<R: Rng>(polys: VanillaPlonkAssignments<F>, rng: &mut R) -> Self {
+        let linearization_polynomial = Poly::rand(polys.degree, rng); // TODO: compute from known commitments
+        let challenges = Challenges::new(rng);
+        Self { polys, linearization_polynomial, challenges, cs: PhantomData }
+    }
 
-        let t_setup = start_timer!(|| format!("KZG setup of degree {} on {}",
-                urs_degree, fflonk::utils::curve_name::<TestCurve>()));
-        let params = CS::setup(urs_degree, rng);
-        end_timer!(t_setup);
+    fn setup<R: Rng>(&mut self, rng: &mut R) -> (CS::CK, CS::VK) {
+        let params = CS::setup(self.polys.max_degree, rng);
         (params.ck(), params.vk())
     }
 
     fn preprocess(&mut self, ck: &CS::CK) -> Vec<CS::C> {
-        let t_preprocessing = start_timer!(|| "Preprocessing");
-        let commitments = self.commit_polynomials(ck, &self.polys.preprocessed_polynomials);
-        end_timer!(t_preprocessing);
-        commitments
+        self.commit_polynomials(ck, &self.polys.preprocessed_polynomials)
     }
 
-    fn prove(&mut self, ck: &CS::CK) -> (Self::Proof, Vec<CS::C>) {
-        let t_proving = start_timer!(|| "Proving");
-        let mut proof_commitments = vec![];
-        proof_commitments.extend(self.commit_polynomials(ck, &self.polys.wire_polynomials));
-        proof_commitments.extend(self.commit_polynomials(ck, &vec![self.polys.permutation_polynomial.clone()]));
-        let q = self.polys.aggregated_constraints_quotient(self.alpha);
-        assert_eq!(q.degree() as u64, 3 * self.polys.domain.size - 4);
-        proof_commitments.extend(self.commit_polynomials(ck, &vec![q]));
+    fn prove(&mut self, ck: &CS::CK) -> BatchyPlonkProof<F, CS> {
 
-        let aggregate_kzg_proof_at_zeta = CS::open(ck, &self.aggregated_polynomial_to_open_in_zeta(self.nus.clone()), self.zeta);
-        let permutation_polynomial_kzg_proof_at_zeta_omega = CS::open(ck, &self.polys.permutation_polynomial, self.zeta * self.polys.omega);
-        end_timer!(t_proving);
+        let wire_polynomials_c = self.commit_polynomials(ck, &self.polys.polys_to_commit_1());
+        let permutation_polynomial_c = self.commit_polynomial(ck, &self.polys.poly_to_commit_2(self.challenges.beta_gamma));
+        let quotient_polynomial_c = self.commit_polynomial(ck, &self.polys.poly_to_commit_3(self.challenges.alpha));
 
-        let evals_at_zeta = self.evaluations_at_zeta(self.zeta);
-        let permutation_polynomial_at_zeta_omega = self.polys.permutation_polynomial_at_zeta_omega(self.zeta);
+        let zeta = self.challenges.zeta;
+        let evals_at_zeta = self.polys.polys_to_evaluate_at_zeta_4().iter().map(|p| p.evaluate(&zeta)).collect();
+        let zeta_omega = zeta * self.polys.omega;
+        let evals_at_zeta_omega = self.polys.poly_to_evaluate_at_zeta_omega_4().evaluate(&zeta_omega);
 
-        let proof = BatchyPlonkProof {
-            aggregate_kzg_proof_at_zeta,
-            permutation_polynomial_kzg_proof_at_zeta_omega,
+        // TODO: should be computed by verifier from other commitments
+        let linearization_polynomial = self.linearization_polynomial.clone();
+
+        let mut polys_to_open_at_zeta = vec![linearization_polynomial.clone()];
+        polys_to_open_at_zeta.extend_from_slice(&self.polys.polys_to_open_at_zeta_5());
+        let agg_poly_at_zeta = poly::sum_with_coeffs(self.challenges.nus.clone(), &polys_to_open_at_zeta);
+
+        let proof_at_zeta = CS::open(ck, &agg_poly_at_zeta, zeta);
+        let proof_at_zeta_omega = CS::open(ck, &self.polys.poly_to_open_at_zeta_omega_5(), zeta_omega);
+
+        // TODO: compute
+        let extra_comm = self.commit_polynomial(ck, &linearization_polynomial);
+        let extra_eval = linearization_polynomial.evaluate(&zeta);
+
+        BatchyPlonkProof {
+            wire_polynomials_c,
+            permutation_polynomial_c: permutation_polynomial_c,
+            quotient_polynomial_c,
             evals_at_zeta,
-            permutation_polynomial_at_zeta_omega,
-        };
-
-        proof_commitments.extend(self.commit_polynomials(ck, &vec![self.linearization_polynomial.clone()]));
-
-        (proof, proof_commitments)
+            evals_at_zeta_omega,
+            proof_at_zeta,
+            proof_at_zeta_omega,
+            extra: (extra_comm, extra_eval),
+        }
     }
 
-    fn verify(&self, vk: &CS::VK, preprocessed_commitments: Vec<CS::C>, commitments_from_proof: Vec<CS::C>, proof: Self::Proof) -> bool {
+    fn verify(&self, vk: &CS::VK, preprocessed_commitments: Vec<CS::C>, proof: BatchyPlonkProof<F, CS>) -> bool {
         let t_kzg = start_timer!(|| "KZG batch verification");
+
         let (agg_comm, agg_eval) = {
             let t_aggregate_claims = start_timer!(|| "aggregate evaluation claims at zeta");
 
-            let mut comms = vec![commitments_from_proof[5].clone()];
-            comms.extend_from_slice(&commitments_from_proof[0..3]); // wire polynomials commitments: [a]_1, [b]_1, [b]_1
-            comms.extend_from_slice(&preprocessed_commitments[5..7]); // [s_{sigma_1}]_1, [s_{sigma_2}]_1
-            assert_eq!(comms.len(), self.nus.len());
-            let agg_comms = CS::C::combine( &self.nus, &comms);
+            let nus = self.challenges.nus.clone();
 
-            let evals = proof.evals_at_zeta;
-            assert_eq!(evals.len(), self.nus.len());
-            let agg_evals = evals.into_iter().zip(self.nus.iter()).map(|(y, r)| y * r).sum();
+            let mut comms = vec![proof.extra.0];
+            comms.extend_from_slice(&(proof.wire_polynomials_c));
+            comms.extend_from_slice(&preprocessed_commitments[5..7]);
+            assert_eq!(comms.len(), nus.len());
+            let agg_comms = CS::C::combine(&nus, &comms);
+
+            let mut evals = vec![proof.extra.1];
+            evals.extend_from_slice(&proof.evals_at_zeta);
+            assert_eq!(evals.len(), nus.len());
+            let agg_evals = evals.into_iter().zip(nus.iter()).map(|(y, r)| y * r).sum();
 
             end_timer!(t_aggregate_claims);
             (agg_comms, agg_evals)
         };
-        let permutation_polynomial_commitment = commitments_from_proof[3].clone();
-        let t_kzg_batch_opening = start_timer!(|| "batched KZG openning");
-        // let opening_at_zeta = KzgOpening {
-        //     c: agg_comm,
-        //     x: self.zeta,
-        //     y: agg_eval,
-        //     proof: proof.cs_proof.0,
-        // };
-        // let opening_at_zeta_omega = KzgOpening {
-        //     c: permutation_polynomial_commitment,
-        //     x: self.zeta * self.polys.omega,
-        //     y: proof.r_zeta_omega,
-        //     proof: proof.r_at_zeta_omega_proof,
-        // };
-        // let openings = vec![opening_at_zeta, opening_at_zeta_omega];
-        let valid = CS::batch_verify(vk,
-                                     vec![agg_comm, permutation_polynomial_commitment],
-                                     vec![self.zeta, self.polys.omega],
-                                     vec![agg_eval, proof.permutation_polynomial_at_zeta_omega],
-                                     vec![proof.aggregate_kzg_proof_at_zeta, proof.permutation_polynomial_kzg_proof_at_zeta_omega],
-                                     &mut test_rng());
 
+        let t_kzg_batch_opening = start_timer!(|| "batched KZG openning");
+        let zeta = self.challenges.zeta;
+        let zeta_omega = zeta * self.polys.omega;
+        let valid = CS::batch_verify(vk,
+                                     vec![agg_comm, proof.permutation_polynomial_c],
+                                     vec![zeta, zeta_omega],
+                                     vec![agg_eval, proof.evals_at_zeta_omega],
+                                     vec![proof.proof_at_zeta, proof.proof_at_zeta_omega],
+                                     &mut test_rng());
         end_timer!(t_kzg_batch_opening);
         end_timer!(t_kzg);
         valid
     }
 }
+
+#[test]
+fn test_vanilla_plonk_batch_kzg_opening() {
+    _test_vanilla_plonk_opening::<_, KZG<Bls12_381>, PlonkBatchKzgTest<_, _>>(8);
+}
+

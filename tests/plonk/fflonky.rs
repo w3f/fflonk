@@ -2,7 +2,7 @@ use ark_ff::{PrimeField, UniformRand, Zero};
 use ark_poly::{Radix2EvaluationDomain, Polynomial};
 use ark_std::test_rng;
 use fflonk::{Poly, FflonkyKzg};
-use crate::{VanillaPlonkAssignments, DecoyPlonk};
+use crate::{VanillaPlonkAssignments, DecoyPlonk, _test_vanilla_plonk_opening};
 use fflonk::pcs::PCS;
 use ark_std::rand::Rng;
 use fflonk::fflonk::Fflonk;
@@ -10,6 +10,8 @@ use ark_std::{end_timer, start_timer};
 use fflonk::pcs::PcsParams;
 use fflonk::shplonk::AggregateProof;
 use std::marker::PhantomData;
+use fflonk::pcs::kzg::KZG;
+use ark_bls12_381::Bls12_381;
 
 
 impl<F: PrimeField> VanillaPlonkAssignments<F> {
@@ -70,13 +72,6 @@ struct PlonkWithFflonkTest<F: PrimeField, CS: PCS<F>> {
 }
 
 impl<F: PrimeField, CS: PCS<F>> PlonkWithFflonkTest<F, CS> {
-    fn new(combinations: Vec<Combination<F>>) -> Self {
-        Self {
-            combinations,
-            cs: PhantomData,
-        }
-    }
-
     fn _commit_proof_polynomials(&self, ck: &CS::CK) -> Vec<CS::C> {
         let t_commitment = start_timer!(|| format!("Committing to {} proof polynomials", self.combinations.len() - 1));
         let commitments = self.combinations.iter().enumerate()
@@ -124,74 +119,54 @@ impl<F: PrimeField, CS: PCS<F>> PlonkWithFflonkTest<F, CS> {
 struct FflonkyPlonkProof<F: PrimeField, CS: PCS<F>> {
     cs_proof: AggregateProof<F, CS>,
     evals: Vec<Vec<Vec<F>>>,
+    commitments: Vec<CS::C>,
 }
-
 
 impl<F: PrimeField, CS: PCS<F>> DecoyPlonk<F, CS> for PlonkWithFflonkTest<F, CS> {
     type Proof = FflonkyPlonkProof<F, CS>;
 
+    fn new<R: Rng>(polys: VanillaPlonkAssignments<F>, rng: &mut R) -> Self {
+        Self {
+            combinations: polys.combinations(),
+            cs: PhantomData,
+        }
+    }
+
     fn setup<R: Rng>(&mut self, rng: &mut R) -> (CS::CK, CS::VK) {
-        let urs_degree = self.combinations.iter()
+        let max_degree = self.combinations.iter()
             .map(|c| c.max_combined_degree())
             .max().unwrap();
-
-        let t_setup = start_timer!(|| format!("KZG setup of degree {} on {}",
-                urs_degree, fflonk::utils::curve_name::<TestCurve>()));
-        let params = CS::setup(urs_degree, rng);
-        end_timer!(t_setup);
+        let params = CS::setup(max_degree, rng);
         (params.ck(), params.vk())
     }
 
     fn preprocess(&mut self, ck: &CS::CK) -> Vec<CS::C> {
-        let t_preprocessing = start_timer!(|| "Preprocessing");
-        let commitment = self._commit_single(0, ck);
-        end_timer!(t_preprocessing);
-        vec![commitment]
+        vec![self._commit_single(0, ck)]
     }
 
-    fn prove(&mut self, ck: &CS::CK) -> (FflonkyPlonkProof<F, CS>, Vec<CS::C>) {
+    fn prove(&mut self, ck: &CS::CK) -> FflonkyPlonkProof<F, CS> {
         let empty_transcript = &mut merlin::Transcript::new(b"plonk-fflonk-shplonk-kzg");
-        let t_proving = start_timer!(|| "Proving");
+
         let commitments = self._commit_proof_polynomials(ck);
         let cs_proof = self._open(empty_transcript, ck);
-        end_timer!(t_proving);
         let evals = self._evaluate();
-        (FflonkyPlonkProof { cs_proof, evals }, commitments)
+        FflonkyPlonkProof { cs_proof, evals, commitments }
     }
 
-    fn verify(&self, vk: &CS::VK, preprocessed_commitments: Vec<CS::C>, commitments_from_proof: Vec<CS::C>, proof: Self::Proof) -> bool {
+    fn verify(&self, vk: &CS::VK, preprocessed_commitments: Vec<CS::C>, proof: FflonkyPlonkProof<F, CS>) -> bool {
         let empty_transcript = &mut merlin::Transcript::new(b"plonk-fflonk-shplonk-kzg");
+
         let (ts, xss): (Vec<_>, Vec<_>) =
             self.combinations.iter()
                 .map(|c| (c.t(), c.roots_of_xs.clone()))
                 .unzip();
-
-        let commitments = [preprocessed_commitments, commitments_from_proof].concat();
+        let commitments = [preprocessed_commitments, proof.commitments].concat();
         FflonkyKzg::<F, CS>::verify(vk, &commitments, &ts, proof.cs_proof, &xss, &proof.evals, empty_transcript)
     }
 }
 
-fn _test_vanilla_plonk_opening<F: PrimeField, CS: PCS<F>>(log_n: usize) {
-    let rng = &mut test_rng();
-
-    let n = 1 << log_n;
-
-    let piop = VanillaPlonkAssignments::<F>::new(n, rng);
-    let combinations = piop.combinations();
-
-    let mut test = PlonkWithFflonkTest::<F, CS>::new(combinations);
-
-    let (ck, vk) = test.setup(rng);
-    let commitments_to_preprocessed_polynomials = test.preprocess(&ck);
-    let (cs_proof, commitments) = test.prove(&ck);
-    // assert_eq!(self.evals.len(), self.combinations.len());
-    // assert_eq!(self.evals[0].len(), self.combinations[0].roots_of_xs.len());
-    // assert_eq!(self.evals[0][0].len(), self.combinations[0].fs.len());
-    assert!(test.verify(&vk, commitments_to_preprocessed_polynomials, commitments, cs_proof));
-}
 
 #[test]
-fn test_vanilla_plonk_opening2() {
-    assert!(cfg!(test));
-    _test_vanilla_plonk_opening::<_, fflonk::pcs::kzg::KZG<ark_bls12_381::Bls12_381>>(8);
+fn test_vanilla_plonk_with_fflonk_opening() {
+    _test_vanilla_plonk_opening::<_, KZG<Bls12_381>, PlonkWithFflonkTest<_, _>>(8);
 }
