@@ -64,52 +64,52 @@ End:     domain_size = 65536,  curve = ark_bls12_381 ...........................
 > cargo test test_vanilla_plonk_with_fflonk_opening --release --features "parallel print-trace" -- --nocapture
 
 ```
-Start:   domain_size = 256,  curve = ark_bls12_381
+Start:   domain_size = 65536,  curve = ark_bls12_381
 ··Start:   Setup
-····Start:   Computing 3060 scalars powers
-····End:     Computing 3060 scalars powers .........................................125.100µs
-····Start:   3060-scalar mul in G1
-····End:     3060-scalar mul in G1 .................................................20.446ms
+····Start:   Computing 786420 scalars powers
+····End:     Computing 786420 scalars powers .......................................41.347ms
+····Start:   786420-scalar mul in G1
+····End:     786420-scalar mul in G1 ...............................................4.923s
 ····Start:   2-scalar mul in G1
-····End:     2-scalar mul in G1 ....................................................3.521ms
-··End:     Setup ...................................................................27.504ms
+····End:     2-scalar mul in G1 ....................................................5.045ms
+··End:     Setup ...................................................................5.008s
 ··Start:   Preprocessing
 ····Start:   Committing to combination #0
-······Start:   combining 8 polynomials: t = 8, max_degree = 255
-······End:     combining 8 polynomials: t = 8, max_degree = 255 ....................23.400µs
-······Start:   committing to the combined polynomial: degree = 2047
-······End:     committing to the combined polynomial: degree = 2047 ................14.400ms
-····End:     Committing to combination #0 ..........................................15.314ms
-··End:     Preprocessing ...........................................................15.729ms
+······Start:   combining 8 polynomials: t = 8, max_degree = 65535
+······End:     combining 8 polynomials: t = 8, max_degree = 65535 ..................10.839ms
+······Start:   committing to the combined polynomial: degree = 524287
+······End:     committing to the combined polynomial: degree = 524287 ..............2.984s
+····End:     Committing to combination #0 ..........................................2.996s
+··End:     Preprocessing ...........................................................2.998s
 ··Start:   Proving
 ····Start:   Committing to 2 proof polynomials
 ······Start:   Committing to combination #1
-········Start:   combining 4 polynomials: t = 4, max_degree = 509
-········End:     combining 4 polynomials: t = 4, max_degree = 509 ..................8.600µs
-········Start:   committing to the combined polynomial: degree = 2039
-········End:     committing to the combined polynomial: degree = 2039 ..............10.475ms
-······End:     Committing to combination #1 ........................................10.859ms
+········Start:   combining 4 polynomials: t = 4, max_degree = 131069
+········End:     combining 4 polynomials: t = 4, max_degree = 131069 ...............5.757ms
+········Start:   committing to the combined polynomial: degree = 524279
+········End:     committing to the combined polynomial: degree = 524279 ............1.914s
+······End:     Committing to combination #1 ........................................1.921s
 ······Start:   Committing to combination #2
-········Start:   combining 4 polynomials: t = 4, max_degree = 764
-········End:     combining 4 polynomials: t = 4, max_degree = 764 ..................17.800µs
-········Start:   committing to the combined polynomial: degree = 3058
-········End:     committing to the combined polynomial: degree = 3058 ..............12.998ms
-······End:     Committing to combination #2 ........................................13.867ms
-····End:     Committing to 2 proof polynomials .....................................25.572ms
+········Start:   combining 4 polynomials: t = 4, max_degree = 196604
+········End:     combining 4 polynomials: t = 4, max_degree = 196604 ...............6.881ms
+········Start:   committing to the combined polynomial: degree = 786418
+········End:     committing to the combined polynomial: degree = 786418 ............1.866s
+······End:     Committing to combination #2 ........................................1.873s
+····End:     Committing to 2 proof polynomials .....................................3.799s
 ····Start:   Opening
 ······Start:   polynomial divisions
-······End:     polynomial divisions ................................................1.747ms
-······Start:   commitment to a degree-3050 polynomial
-······End:     commitment to a degree-3050 polynomial ..............................17.542ms
+······End:     polynomial divisions ................................................445.258ms
+······Start:   commitment to a degree-786410 polynomial
+······End:     commitment to a degree-786410 polynomial ............................3.334s
 ······Start:   linear combination of polynomials
-······End:     linear combination of polynomials ...................................437.600µs
-····End:     Opening ...............................................................46.147ms
-··End:     Proving .................................................................72.668ms
+······End:     linear combination of polynomials ...................................93.415ms
+····End:     Opening ...............................................................8.324s
+··End:     Proving .................................................................12.148s
 ··Start:   Verifying
 ····Start:   barycentric evaluations
-····End:     barycentric evaluations ...............................................95.800µs
+····End:     barycentric evaluations ...............................................135.500µs
 ····Start:   multiexp
-····End:     multiexp ..............................................................435.900µs
-··End:     Verifying ...............................................................2.399ms
-End:     domain_size = 256,  curve = ark_bls12_381 .................................119.557ms
+····End:     multiexp ..............................................................505.100µs
+··End:     Verifying ...............................................................3.324ms
+End:     domain_size = 65536,  curve = ark_bls12_381 ...............................20.161s
 ```

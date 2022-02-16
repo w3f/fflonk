@@ -168,5 +168,5 @@ impl<F: PrimeField, CS: PCS<F>> DecoyPlonk<F, CS> for PlonkWithFflonkTest<F, CS>
 
 #[test]
 fn test_vanilla_plonk_with_fflonk_opening() {
-    _test_vanilla_plonk_opening::<_, KZG<Bls12_381>, PlonkWithFflonkTest<_, _>>(8);
+    _test_vanilla_plonk_opening::<_, KZG<Bls12_381>, PlonkWithFflonkTest<_, _>>(16);
 }
