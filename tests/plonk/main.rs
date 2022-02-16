@@ -17,7 +17,9 @@ use ark_ec::PairingEngine;
 use fflonk::shplonk::AggregateProof;
 
 struct VanillaPlonkAssignments<F: PrimeField, D: EvaluationDomain<F>> {
-    domain: D,
+    domain_size: usize,
+    max_degree: usize,
+
     // [Poly<F>; 8], max_deg = d
     preprocessed_polynomials: Vec<Poly<F>>,
     // [Poly<F>; 3], max_deg = d
@@ -30,6 +32,9 @@ struct VanillaPlonkAssignments<F: PrimeField, D: EvaluationDomain<F>> {
     permutation_constraint_1: Poly<F>,
     // // max_deg = 4 * d
     permutation_constraint_2: Poly<F>,
+
+    domain: D,
+    omega: F,
 }
 
 fn random_polynomials<F: PrimeField, R: Rng>(k: usize, degree: usize, rng: &mut R) -> Vec<Poly<F>> {
@@ -38,16 +43,21 @@ fn random_polynomials<F: PrimeField, R: Rng>(k: usize, degree: usize, rng: &mut 
 
 impl<F: PrimeField> VanillaPlonkAssignments<F, Radix2EvaluationDomain<F>> {
     fn new<R: Rng>(n: usize, rng: &mut R) -> Self {
-        let d = n - 1;
-        let domain = Radix2EvaluationDomain::<F>::new(n).expect("TODO"); //TODO
+        let domain_size = n;
+        let max_degree = n - 1;
+        let domain = Radix2EvaluationDomain::<F>::new(n).unwrap();
+        let omega = domain.group_gen;
         Self {
+            domain_size,
+            max_degree,
+            preprocessed_polynomials: random_polynomials(8, max_degree, rng),
+            wire_polynomials: random_polynomials(3, max_degree, rng),
+            permutation_polynomial: Poly::rand(max_degree, rng),
+            arithmetic_constraint: Poly::rand(3 * max_degree, rng),
+            permutation_constraint_1: Poly::rand(2 * max_degree, rng),
+            permutation_constraint_2: Poly::rand(4 * max_degree, rng),
             domain,
-            preprocessed_polynomials: random_polynomials(8, d, rng),
-            wire_polynomials: random_polynomials(3, d, rng),
-            permutation_polynomial: Poly::rand(d, rng),
-            arithmetic_constraint: Poly::rand(3 * d, rng),
-            permutation_constraint_1: Poly::rand(2 * d, rng),
-            permutation_constraint_2: Poly::rand(4 * d, rng),
+            omega,
         }
     }
 
@@ -60,8 +70,8 @@ trait DecoyPlonk<F: PrimeField, CS: PCS<F>> {
     type Proof;
     fn setup<R: Rng>(&mut self, rng: &mut R) -> (CS::CK, CS::VK);
     fn preprocess(&mut self, ck: &CS::CK) -> Vec<CS::C>;
-    fn prove(&mut self, ck: &CS::CK) -> (Self::Proof, Vec<CS::C>, Vec<Vec<Vec<F>>>);
-    fn verify(&self, vk: &CS::VK, preprocessed_commitments: Vec<CS::C>, commitments_from_proof: Vec<CS::C>, evals_from_proof: Vec<Vec<Vec<F>>>, cs_proof: Self::Proof) -> bool;
+    fn prove(&mut self, ck: &CS::CK) -> (Self::Proof, Vec<CS::C>);
+    fn verify(&self, vk: &CS::VK, preprocessed_commitments: Vec<CS::C>, commitments_from_proof: Vec<CS::C>, cs_proof: Self::Proof) -> bool;
 }
 
 

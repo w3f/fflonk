@@ -121,8 +121,14 @@ impl<F: PrimeField, CS: PCS<F>> PlonkWithFflonkTest<F, CS> {
     }
 }
 
+struct FflonkyPlonkProof<F: PrimeField, CS: PCS<F>> {
+    cs_proof: AggregateProof<F, CS>,
+    evals: Vec<Vec<Vec<F>>>,
+}
+
+
 impl<F: PrimeField, CS: PCS<F>> DecoyPlonk<F, CS> for PlonkWithFflonkTest<F, CS> {
-    type Proof = AggregateProof<F, CS>;
+    type Proof = FflonkyPlonkProof<F, CS>;
 
     fn setup<R: Rng>(&mut self, rng: &mut R) -> (CS::CK, CS::VK) {
         let urs_degree = self.combinations.iter()
@@ -143,17 +149,17 @@ impl<F: PrimeField, CS: PCS<F>> DecoyPlonk<F, CS> for PlonkWithFflonkTest<F, CS>
         vec![commitment]
     }
 
-    fn prove(&mut self, ck: &CS::CK) -> (Self::Proof, Vec<CS::C>, Vec<Vec<Vec<F>>>) {
+    fn prove(&mut self, ck: &CS::CK) -> (FflonkyPlonkProof<F, CS>, Vec<CS::C>) {
         let empty_transcript = &mut merlin::Transcript::new(b"plonk-fflonk-shplonk-kzg");
         let t_proving = start_timer!(|| "Proving");
         let commitments = self._commit_proof_polynomials(ck);
-        let proof = self._open(empty_transcript, ck);
+        let cs_proof = self._open(empty_transcript, ck);
         end_timer!(t_proving);
         let evals = self._evaluate();
-        (proof, commitments, evals)
+        (FflonkyPlonkProof { cs_proof, evals }, commitments)
     }
 
-    fn verify(&self, vk: &CS::VK, preprocessed_commitments: Vec<CS::C>, commitments_from_proof: Vec<CS::C>, evals_from_proof: Vec<Vec<Vec<F>>>, proof: Self::Proof) -> bool {
+    fn verify(&self, vk: &CS::VK, preprocessed_commitments: Vec<CS::C>, commitments_from_proof: Vec<CS::C>, proof: Self::Proof) -> bool {
         let empty_transcript = &mut merlin::Transcript::new(b"plonk-fflonk-shplonk-kzg");
         let (ts, xss): (Vec<_>, Vec<_>) =
             self.combinations.iter()
@@ -161,7 +167,7 @@ impl<F: PrimeField, CS: PCS<F>> DecoyPlonk<F, CS> for PlonkWithFflonkTest<F, CS>
                 .unzip();
 
         let commitments = [preprocessed_commitments, commitments_from_proof].concat();
-        FflonkyKzg::<F, CS>::verify(vk, &commitments, &ts, proof, &xss, &evals_from_proof, empty_transcript)
+        FflonkyKzg::<F, CS>::verify(vk, &commitments, &ts, proof.cs_proof, &xss, &proof.evals, empty_transcript)
     }
 }
 
@@ -177,11 +183,11 @@ fn _test_vanilla_plonk_opening<F: PrimeField, CS: PCS<F>>(log_n: usize) {
 
     let (ck, vk) = test.setup(rng);
     let commitments_to_preprocessed_polynomials = test.preprocess(&ck);
-    let (cs_proof, commitments, evals) = test.prove(&ck);
+    let (cs_proof, commitments) = test.prove(&ck);
     // assert_eq!(self.evals.len(), self.combinations.len());
     // assert_eq!(self.evals[0].len(), self.combinations[0].roots_of_xs.len());
     // assert_eq!(self.evals[0][0].len(), self.combinations[0].fs.len());
-    assert!(test.verify(&vk, commitments_to_preprocessed_polynomials, commitments, evals, cs_proof));
+    assert!(test.verify(&vk, commitments_to_preprocessed_polynomials, commitments, cs_proof));
 }
 
 #[test]
