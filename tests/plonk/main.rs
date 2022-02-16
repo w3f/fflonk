@@ -16,7 +16,7 @@ use ark_poly::Radix2EvaluationDomain;
 use ark_ec::PairingEngine;
 use fflonk::shplonk::AggregateProof;
 
-struct VanillaPlonkAssignments<F: PrimeField, D: EvaluationDomain<F>> {
+struct VanillaPlonkAssignments<F: PrimeField> {
     domain_size: usize,
     max_degree: usize,
 
@@ -33,7 +33,7 @@ struct VanillaPlonkAssignments<F: PrimeField, D: EvaluationDomain<F>> {
     // // max_deg = 4 * d
     permutation_constraint_2: Poly<F>,
 
-    domain: D,
+    domain: Radix2EvaluationDomain<F>,
     omega: F,
 }
 
@@ -41,7 +41,8 @@ fn random_polynomials<F: PrimeField, R: Rng>(k: usize, degree: usize, rng: &mut 
     (0..k).map(|_| Poly::rand(degree, rng)).collect()
 }
 
-impl<F: PrimeField> VanillaPlonkAssignments<F, Radix2EvaluationDomain<F>> {
+impl<F: PrimeField> VanillaPlonkAssignments<F> {
+
     fn new<R: Rng>(n: usize, rng: &mut R) -> Self {
         let domain_size = n;
         let max_degree = n - 1;

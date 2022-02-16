@@ -12,7 +12,7 @@ use fflonk::shplonk::AggregateProof;
 use std::marker::PhantomData;
 
 
-impl<F: PrimeField> VanillaPlonkAssignments<F, Radix2EvaluationDomain<F>> {
+impl<F: PrimeField> VanillaPlonkAssignments<F> {
     fn combinations(&self) -> Vec<Combination<F>> {
         let zeta: F = u128::rand(&mut test_rng()).into();
         let omega = self.domain.group_gen;
@@ -176,7 +176,7 @@ fn _test_vanilla_plonk_opening<F: PrimeField, CS: PCS<F>>(log_n: usize) {
 
     let n = 1 << log_n;
 
-    let piop = VanillaPlonkAssignments::<F, _>::new(n, rng);
+    let piop = VanillaPlonkAssignments::<F>::new(n, rng);
     let combinations = piop.combinations();
 
     let mut test = PlonkWithFflonkTest::<F, CS>::new(combinations);

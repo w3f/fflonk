@@ -13,7 +13,7 @@ use ark_bls12_381::{Fr, Bls12_381};
 use fflonk::pcs::kzg::{KzgOpening, KZG};
 use ark_ec::PairingEngine;
 
-impl<F: PrimeField> VanillaPlonkAssignments<F, Radix2EvaluationDomain<F>> {
+impl<F: PrimeField> VanillaPlonkAssignments<F> {
     fn constraints(&self) -> Vec<Poly<F>> {
         vec![
             self.arithmetic_constraint.clone(),
@@ -27,9 +27,6 @@ impl<F: PrimeField> VanillaPlonkAssignments<F, Radix2EvaluationDomain<F>> {
         self.quotient(&aggregate_constraint)
     }
 
-
-
-
     fn permutation_polynomial_at_zeta_omega(&self, zeta: F) -> F {
         let zeta_omega = zeta * self.omega;
         self.permutation_polynomial.evaluate(&zeta_omega)
@@ -37,7 +34,7 @@ impl<F: PrimeField> VanillaPlonkAssignments<F, Radix2EvaluationDomain<F>> {
 }
 
 struct PlonkBatchKzgTest<F: PrimeField, CS: PCS<F>> {
-    polys: VanillaPlonkAssignments<F, Radix2EvaluationDomain<F>>,
+    polys: VanillaPlonkAssignments<F>,
 
     linearization_polynomial: Poly<F>,
     // verifier challenges in order:
@@ -57,7 +54,7 @@ impl<F: PrimeField, CS: PCS<F>> PlonkBatchKzgTest<F, CS> {
 
         let n = 1 << log_n;
 
-        let polys = VanillaPlonkAssignments::<F, _>::new(n, rng);
+        let polys = VanillaPlonkAssignments::<F>::new(n, rng);
         let linearization_polynomial = Poly::rand(polys.max_degree, rng);
 
         let alpha: F = Self::get_128_bit_challenge(rng);
