@@ -2,23 +2,19 @@ mod fflonky;
 mod batchy;
 
 
-use fflonk::{Poly, FflonkyKzg};
+use fflonk::Poly;
 use ark_std::test_rng;
-use ark_poly::{UVPolynomial, Polynomial};
+use ark_poly::UVPolynomial;
 use ark_std::rand::Rng;
-use ark_ff::{PrimeField, UniformRand, Zero};
+use ark_ff::PrimeField;
 use ark_poly::EvaluationDomain;
-use fflonk::pcs::{PCS, PcsParams};
 use ark_std::{end_timer, start_timer};
-use fflonk::fflonk::Fflonk;
-use std::marker::PhantomData;
 use ark_poly::Radix2EvaluationDomain;
-use ark_ec::PairingEngine;
-use fflonk::shplonk::AggregateProof;
 use ark_bls12_381::Bls12_381;
+use fflonk::pcs::PCS;
+
 
 struct VanillaPlonkAssignments<F: PrimeField> {
-    domain_size: usize,
     degree: usize,
     max_degree: usize,
 
@@ -44,14 +40,12 @@ fn random_polynomials<F: PrimeField, R: Rng>(k: usize, degree: usize, rng: &mut 
 }
 
 impl<F: PrimeField> VanillaPlonkAssignments<F> {
-    fn new<R: Rng>(n: usize, rng: &mut R) -> Self {
-        let domain_size = n;
-        let degree = n - 1;
+    fn new<R: Rng>(domain_size: usize, rng: &mut R) -> Self {
+        let degree = domain_size - 1;
         let max_degree = 3 * degree; // permutation_constraint_2 / Z
-        let domain = Radix2EvaluationDomain::<F>::new(n).unwrap();
+        let domain = Radix2EvaluationDomain::<F>::new(domain_size).unwrap();
         let omega = domain.group_gen;
         Self {
-            domain_size,
             degree,
             max_degree,
             preprocessed_polynomials: random_polynomials(8, degree, rng),

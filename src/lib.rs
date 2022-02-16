@@ -147,7 +147,7 @@ mod tests {
             self.0
         }
 
-        fn commit_to_q(&mut self, q: &<CS as PCS<F>>::C) {
+        fn commit_to_q(&mut self, _q: &CS::C) {
 
         }
 

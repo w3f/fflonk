@@ -1,5 +1,5 @@
 use ark_ff::{PrimeField, UniformRand, Zero};
-use ark_poly::{Radix2EvaluationDomain, Polynomial};
+use ark_poly::Polynomial;
 use ark_std::test_rng;
 use fflonk::{Poly, FflonkyKzg};
 use crate::{VanillaPlonkAssignments, DecoyPlonk, _test_vanilla_plonk_opening};
@@ -125,7 +125,7 @@ struct FflonkyPlonkProof<F: PrimeField, CS: PCS<F>> {
 impl<F: PrimeField, CS: PCS<F>> DecoyPlonk<F, CS> for PlonkWithFflonkTest<F, CS> {
     type Proof = FflonkyPlonkProof<F, CS>;
 
-    fn new<R: Rng>(polys: VanillaPlonkAssignments<F>, rng: &mut R) -> Self {
+    fn new<R: Rng>(polys: VanillaPlonkAssignments<F>, _rng: &mut R) -> Self {
         Self {
             combinations: polys.combinations(),
             cs: PhantomData,

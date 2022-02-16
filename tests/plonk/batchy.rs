@@ -1,18 +1,14 @@
 use std::marker::PhantomData;
-use ark_ff::{PrimeField, UniformRand, One};
+use ark_ff::{PrimeField, UniformRand};
 use fflonk::pcs::{PCS, PcsParams, Commitment};
-use crate::{DecoyPlonk, VanillaPlonkAssignments, random_polynomials, _test_vanilla_plonk_opening};
+use crate::{DecoyPlonk, VanillaPlonkAssignments, _test_vanilla_plonk_opening};
 use fflonk::Poly;
-use ark_poly::{Radix2EvaluationDomain, Polynomial, EvaluationDomain, UVPolynomial};
-use fflonk::shplonk::AggregateProof;
+use ark_poly::{Polynomial, UVPolynomial};
 use ark_std::rand::Rng;
 use ark_std::{end_timer, start_timer, test_rng};
 use fflonk::utils::poly;
-use fflonk::aggregation::single::aggregate_claims_multiexp;
-use ark_bls12_381::{Fr, Bls12_381};
-use fflonk::pcs::kzg::{KzgOpening, KZG};
-use ark_ec::PairingEngine;
-use fflonk::utils::ec::small_multiexp_affine;
+use ark_bls12_381::Bls12_381;
+use fflonk::pcs::kzg::KZG;
 
 impl<F: PrimeField> VanillaPlonkAssignments<F> {
     fn constraints(&self) -> Vec<Poly<F>> {
