@@ -5,32 +5,22 @@ This repo aims to build a collection of tools for augmenting polynomial commitme
 
 Notice that this type of aggregation is different from [aggregation for vector commitments](https://eprint.iacr.org/2020/527.pdf) in that the proof for the aggregated claim is produced from scratch, while in the latter case the aggregate proof is computed from the proofs for the individual claims. At least, it is not implemented.      
 
-#### TODO: Example: compiling KZG
-
 ## FFlonk
 
 [FFlonk](https://eprint.iacr.org/2021/1167.pdf) from `n` polynomials of degrees not exceeding `d` constructs a polynomial of degree less that `nd`, such that evaluating each of the individual polynomials in the same `k` points is equivalent to evaluating  the combined polynomial in `nk` points. In combination with a PCS enjoying efficient multipoint openings, asymptotically reduces the number of commitments to transfer and improves verifier performance. 
 
-#### TODO:  Example: Opening Fflonk-combined polynomial with Shplonk-compiled KZG 
-
 ### What is implemented
 1. Traits for a minimal PCS (far from being perfect). 
 2. Simplest form of KZG implementing these traits.
-3. Halo Ininity private aggregation (aka Schplonk scheme #2) generic over the traits.
+3. Halo Inifinite private aggregation (aka Schplonk scheme #2) generic over the traits.
 4. Fflonk routines: combining polynomials, converting evaluations.
-5. Fflonk PCS from [the original paper](https://eprint.iacr.org/2021/1167.pdf): opens Ffflonk-combined polynomials with Shplonk-compiled KZG. 
+5. Fflonk PCS from [the original paper](https://eprint.iacr.org/2021/1167.pdf): opens Ffflonk-combined polynomials with Shplonk-compiled KZG.
+6. [A test](/tests/plonk) comparing opening a very vanilla (not zk, arithmetic gate only, no polynomial splitting) Plonk polynomial assignment using 
+   * Batching verification of KZG proofs in different points and linearization, as described in the original [P lonK](plonk)
+   * The scheme described in [ff lonK](https://eprint.iacr.org/2021/1167.pdf), Section 7.
 
-### What is planned
-1. Another PCS implementing the traits, IPA-flavoured most likely
-2. Enhancing KZG PCS:
-   * updatability via Lagrangian SRS 
-   * opening single polynomial in multiple points non-interactively, [original KZG paper](https://cacr.uwaterloo.ca/techreports/2010/cacr2010-10.pdf), Batch Opening
-   * Halo-style accumulation of openings, at least for verifier-side batch verification 
-3. Shplonk scheme #1, may be with proof (cross-)aggregation
-4. Adding hiding
-
-#### Benchamrks
+#### KZG benchmarks
 ```
-cargo test bench_minimal_kzg --release --features "print-trace" -- --nocapture --ignored
+cargo test bench_minimal_kzg --release --features "parallel print-trace" -- --nocapture --ignored
 ```
-outputs timings for generating a setup, committing to a 2^16-degree,  proving and verifying an opening in a single point. 
+outputs timings for generating a setup, committing to a 2^16-degree polynomial, proving and verifying an opening in a single point.
