@@ -208,7 +208,7 @@ mod tests {
 
         let xs = (0..k).map(|_| E::Fr::rand(rng)).collect();
         let openings = random_openings(k, &ck, xs, rng);
-        let t_verify_batch = start_timer!(|| format!("Batch verification of {} openings of degree ~2^{} on {} with {}-bit xs", k, log_n, crate::utils::curve_name::<E>(), E::Fr::size_in_bits()));
+        let t_verify_batch = start_timer!(|| format!("Batch verification of {} openings of degree ~2^{} on {} with {}-bit xs", k, log_n, crate::utils::curve_name::<E>(), E::Fr::MODULUS_BIT_SIZE));
         assert!(KZG::<E>::verify_batch(openings, &vk, rng));
         end_timer!(t_verify_batch);
 
