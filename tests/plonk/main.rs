@@ -119,11 +119,13 @@ fn _test_vanilla_plonk_opening<F: PrimeField, CS: PCS<F>, T: DecoyPlonk<F, CS>>(
 }
 
 #[test]
+#[ignore]
 fn test_vanilla_plonk_batch_kzg_opening() {
     _test_vanilla_plonk_opening::<_, KZG<Bls12_381>, PlonkBatchKzgTest<_, _>>(16);
 }
 
 #[test]
+#[ignore]
 fn test_vanilla_plonk_with_fflonk_opening() {
     _test_vanilla_plonk_opening::<_, KZG<Bls12_381>, PlonkWithFflonkTest<_, _>>(16);
 }

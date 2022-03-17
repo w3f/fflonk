@@ -1,4 +1,4 @@
-> cargo test test_vanilla_plonk_batch_kzg_opening --release --features "parallel print-trace" -- --nocapture
+> cargo test test_vanilla_plonk_batch_kzg_opening --release --features "parallel print-trace" -- --nocapture --ignored
 
 ```
 running 1 test
@@ -63,7 +63,7 @@ End:     domain_size = 65536,  curve = ark_bls12_381 ...........................
 proof size = 624, preprocessed data size = 392
 ```
 
-> cargo test test_vanilla_plonk_with_fflonk_opening --release --features "parallel print-trace" -- --nocapture
+> cargo test test_vanilla_plonk_with_fflonk_opening --release --features "parallel print-trace" -- --nocapture --ignored
 
 ```
 Start:   domain_size = 65536,  curve = ark_bls12_381
