@@ -1,6 +1,6 @@
 use ark_ec::{PairingEngine, ProjectiveCurve};
 use ark_std::rand::RngCore;
-use ark_ff::{UniformRand, PrimeField, FftField, FftParameters};
+use ark_ff::{UniformRand, PrimeField, FftField};
 use crate::utils;
 use ark_ec::msm::FixedBase;
 
@@ -8,6 +8,7 @@ use ark_serialize::*;
 use ark_std::io::{Read, Write};
 
 use ark_std::{end_timer, start_timer};
+use ark_std::convert::TryInto;
 
 
 /// Updatable Universal References String
@@ -27,7 +28,7 @@ impl<E: PairingEngine> URS<E> {
     fn single_base_msm<G: ProjectiveCurve>(scalars: &[G::ScalarField], g: G) -> Vec<G::Affine> {
         let num_scalars = scalars.len();
         let window_size = FixedBase::get_mul_window_size(num_scalars);
-        let bits_in_scalar = G::ScalarField::size_in_bits();
+        let bits_in_scalar = G::ScalarField::MODULUS_BIT_SIZE.try_into().unwrap();
         let table = FixedBase::get_window_table(bits_in_scalar, window_size, g);
         let scalars_in_g = FixedBase::msm(bits_in_scalar, window_size, &table, scalars);
         assert_eq!(scalars_in_g.len(), num_scalars);
@@ -43,7 +44,7 @@ impl<E: PairingEngine> URS<E> {
         assert!(n > 0, "nothing to generate");
 
         // Until ECFFT for more curves is implemented, see https://github.com/wborgeaud/ecfft-bn254
-        assert!(n <= 1 << <E::Fr as FftField>::FftParams::TWO_ADICITY, "number of bases exceeds curve 2-adicity");
+        assert!(n <= 1 << E::Fr::TWO_ADICITY, "number of bases exceeds curve 2-adicity");
 
         let t_powers = start_timer!(|| format!("Computing {} scalars powers", n));
         // tau^0, ..., tau^(n-1))
@@ -101,7 +102,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_max_bases() {
-        let max_bases = 1 << <ark_bw6_761::Fr as FftField>::FftParams::TWO_ADICITY;
+        let max_bases = 1 << ark_bw6_761::Fr::TWO_ADICITY;
         URS::<TestCurve>::generate(max_bases + 1, 0, &mut test_rng());
     }
 }

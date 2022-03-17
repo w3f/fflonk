@@ -7,6 +7,7 @@ use ark_poly::UVPolynomial;
 use ark_std::marker::PhantomData;
 use ark_std::ops::Div;
 use crate::utils;
+use ark_std::convert::TryInto;
 
 pub struct Fflonk<F: FftField, P: UVPolynomial<F>> {
     _field: PhantomData<F>,
@@ -37,7 +38,7 @@ impl<F: FftField, P: UVPolynomial<F>> Fflonk<F, P>
     // `z, zw, ..., zw^{t-1}`, where w is a primitive `t`-th root of unity.
     // TODO: fix the order
     pub fn roots(t: usize, root_t_of_x: F) -> Vec<F> {
-        let omega_t = F::get_root_of_unity(t).expect("root of unity not found");
+        let omega_t = F::get_root_of_unity(t.try_into().unwrap()).expect("root of unity not found");
         let mut acc = root_t_of_x;
         let mut res = vec![root_t_of_x];
         res.resize_with(t, || {

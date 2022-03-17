@@ -5,11 +5,12 @@ edition = "2021"
 authors = ["Sergey Vasilyev <swasilyev@gmail.com>"]
 
 [dependencies]
-ark-std = { version = "0.3", default-features = false }
-ark-ff = { version = "0.3", default-features = false }
-ark-ec = { version = "0.3", default-features = false }
-ark-poly = { version = "0.3", default-features = false }
-ark-serialize = { version = "0.3", default-features = false, features = ["derive"] }
+ark-std = { git = "https://github.com/arkworks-rs/std", default-features = false }
+ark-ff = { git = "https://github.com/arkworks-rs/algebra", default-features = false }
+ark-ec = { git = "https://github.com/arkworks-rs/algebra", default-features = false }
+ark-poly = { git = "https://github.com/arkworks-rs/algebra", default-features = false }
+ark-serialize = { git = "https://github.com/arkworks-rs/algebra", default-features = false, features = ["derive"] }
+
 rayon = { version = "1", optional = true }
 merlin = "3.0"
 
@@ -36,10 +37,9 @@ std = ["ark-std/std", "ark-ff/std", "ark-ec/std", "ark-poly/std", "ark-serialize
 parallel = ["std", "ark-std/parallel", "ark-ff/parallel", "ark-ec/parallel", "ark-poly/parallel", "rayon"]
 print-trace = ["ark-std/print-trace"]
 
-# until https://github.com/arkworks-rs/curves/pull/95 is merged
 [patch.crates-io]
 ark-std = { git = "https://github.com/arkworks-rs/std" }
-ark-ff = { git = "https://github.com/arkworks-rs/algebra", rev = "d6365c3" }
-ark-ec = { git = "https://github.com/arkworks-rs/algebra", rev = "d6365c3" }
-ark-poly = { git = "https://github.com/arkworks-rs/algebra", rev = "d6365c3" }
-ark-serialize = { git = "https://github.com/arkworks-rs/algebra", rev = "d6365c3" }
+ark-ff = { git = "https://github.com/arkworks-rs/algebra" }
+ark-ec = { git = "https://github.com/arkworks-rs/algebra" }
+ark-poly = { git = "https://github.com/arkworks-rs/algebra" }
+ark-serialize = { git = "https://github.com/arkworks-rs/algebra" }

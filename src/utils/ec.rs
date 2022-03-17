@@ -10,7 +10,7 @@ pub fn naive_multiexp_affine<G: AffineCurve>(coeffs: &[G::ScalarField], bases: &
 // adopted from https://github.com/zcash/halo2/pull/20
 pub fn small_multiexp_affine<G: AffineCurve>(coeffs: &[G::ScalarField], bases: &[G]) -> G::Projective {
     let bytes_in_repr = <G::ScalarField as PrimeField>::BigInt::NUM_LIMBS * 8;
-    let coeffs: Vec<_> = coeffs.iter().map(|c| c.into_repr().to_bytes_le()).collect();
+    let coeffs: Vec<_> = coeffs.iter().map(|c| c.into_bigint().to_bytes_le()).collect();
 
     let mut acc = G::Projective::zero();
 
@@ -39,7 +39,7 @@ pub fn small_multiexp_proj<G: ProjectiveCurve>(coeffs: &[G::ScalarField], bases:
 
 pub fn _small_multiexp_proj_2<G: ProjectiveCurve>(coeffs: &[G::ScalarField], bases: &[G]) -> G {
     let bytes_in_repr = <G::ScalarField as PrimeField>::BigInt::NUM_LIMBS * 8;
-    let coeffs: Vec<_> = coeffs.iter().map(|c| c.into_repr().to_bytes_le()).collect();
+    let coeffs: Vec<_> = coeffs.iter().map(|c| c.into_bigint().to_bytes_le()).collect();
 
     let mut acc = G::zero();
 

@@ -109,7 +109,7 @@ impl<E: PairingEngine> PCS<E::Fr> for KZG<E> {
     fn commit(ck: &KzgCommitterKey<E::G1Affine>, p: &Poly<E::Fr>) -> Self::C {
         assert!(p.degree() <= ck.max_degree(), "Can't commit to degree {} polynomial using {} bases", p.degree(), ck.powers_in_g1.len());
 
-        let coeffs = p.coeffs.iter().map(|c| c.into_repr()).collect::<Vec<_>>();
+        let coeffs = p.coeffs.iter().map(|c| c.into_bigint()).collect::<Vec<_>>();
         let commitment = VariableBase::msm(
             &ck.powers_in_g1,
             &coeffs,
