@@ -3,18 +3,18 @@
 //! polynomials each in the same point to opening a single polynomial in multiple points.
 
 use ark_ff::FftField;
-use ark_poly::UVPolynomial;
+use ark_poly::DenseUVPolynomial;
 use ark_std::marker::PhantomData;
 use ark_std::ops::Div;
 use crate::utils;
 use ark_std::convert::TryInto;
 
-pub struct Fflonk<F: FftField, P: UVPolynomial<F>> {
+pub struct Fflonk<F: FftField, P: DenseUVPolynomial<F>> {
     _field: PhantomData<F>,
     _poly: PhantomData<P>,
 }
 
-impl<F: FftField, P: UVPolynomial<F>> Fflonk<F, P>
+impl<F: FftField, P: DenseUVPolynomial<F>> Fflonk<F, P>
     where for<'a, 'b> &'a P: Div<&'b P, Output=P>
 
 {

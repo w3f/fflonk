@@ -16,8 +16,9 @@ merlin = "3.0"
 
 [dev-dependencies]
 criterion = "0.3"
-ark-bw6-761 = { git = "https://github.com/arkworks-rs/curves", version = "0.3", default-features = false }
-ark-bls12-381 = { git = "https://github.com/arkworks-rs/curves", version = "0.3", default-features = false, features = ["curve"] }
+# TODO: https://github.com/arkworks-rs/curves/pull/106
+ark-bw6-761 = { git = "https://github.com/mmagician/curves", branch = "catch-up-ff", default-features = false }
+ark-bls12-381 = { git = "https://github.com/mmagician/curves", branch = "catch-up-ff", default-features = false, features = ["curve"] }
 
 [[bench]]
 name = "primitives"

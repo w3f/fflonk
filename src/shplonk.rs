@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::marker::PhantomData;
 
 use ark_ff::PrimeField;
-use ark_poly::{Polynomial, UVPolynomial};
+use ark_poly::{Polynomial, DenseUVPolynomial};
 
 use crate::aggregation::multiple::{aggregate_claims, aggregate_polys, Transcript, group_by_commitment};
 use crate::pcs::PCS;

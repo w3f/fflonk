@@ -4,7 +4,7 @@ mod batchy;
 
 use fflonk::Poly;
 use ark_std::test_rng;
-use ark_poly::UVPolynomial;
+use ark_poly::DenseUVPolynomial;
 use ark_std::rand::Rng;
 use ark_ff::PrimeField;
 use ark_poly::EvaluationDomain;

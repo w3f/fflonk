@@ -1,5 +1,5 @@
 use ark_ff::{FftField, Field, PrimeField, Zero};
-use ark_poly::{Polynomial, UVPolynomial};
+use ark_poly::{Polynomial, DenseUVPolynomial};
 use ark_poly::polynomial::univariate::DensePolynomial;
 
 use crate::Poly;

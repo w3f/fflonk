@@ -9,8 +9,8 @@ use crate::pcs::kzg::params::{KzgCommitterKey, KzgVerifierKey};
 use crate::Poly;
 use crate::pcs::kzg::commitment::KzgCommitment;
 use crate::pcs::kzg::urs::URS;
-use ark_poly::{Polynomial, UVPolynomial};
-use ark_ec::msm::VariableBase;
+use ark_poly::{Polynomial, DenseUVPolynomial};
+use ark_ec::msm::VariableBaseMSM;
 use ark_ff::{PrimeField, One, UniformRand};
 use ark_ec::AffineCurve;
 
@@ -109,10 +109,9 @@ impl<E: PairingEngine> PCS<E::Fr> for KZG<E> {
     fn commit(ck: &KzgCommitterKey<E::G1Affine>, p: &Poly<E::Fr>) -> Self::C {
         assert!(p.degree() <= ck.max_degree(), "Can't commit to degree {} polynomial using {} bases", p.degree(), ck.powers_in_g1.len());
 
-        let coeffs = p.coeffs.iter().map(|c| c.into_bigint()).collect::<Vec<_>>();
-        let commitment = VariableBase::msm(
+        let commitment: E::G1Projective = VariableBaseMSM::msm(
             &ck.powers_in_g1,
-            &coeffs,
+            &p.coeffs,
         );
 
         KzgCommitment(commitment.into())
@@ -143,7 +142,7 @@ mod tests {
     use super::*;
     use ark_std::test_rng;
     use crate::pcs::PcsParams;
-    use ark_poly::UVPolynomial;
+    use ark_poly::DenseUVPolynomial;
     use ark_ff::UniformRand;
 
     use ark_std::{end_timer, start_timer};

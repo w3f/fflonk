@@ -3,7 +3,7 @@ use ark_ff::{PrimeField, UniformRand};
 use fflonk::pcs::{PCS, PcsParams, Commitment};
 use crate::{DecoyPlonk, VanillaPlonkAssignments};
 use fflonk::Poly;
-use ark_poly::{Polynomial, UVPolynomial};
+use ark_poly::{Polynomial, DenseUVPolynomial};
 use ark_std::rand::Rng;
 use ark_std::{end_timer, start_timer, test_rng};
 use fflonk::utils::poly;

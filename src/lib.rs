@@ -17,7 +17,7 @@ pub mod utils;
 pub mod aggregation;
 
 
-pub type Poly<F> = DensePolynomial<F>; // currently SparsePolynomial doesn't implement UVPolynomial anyway
+pub type Poly<F> = DensePolynomial<F>; // currently SparsePolynomial doesn't implement DenseUVPolynomial anyway
 
 pub trait EuclideanPolynomial<F: PrimeField> {
     fn divide_with_q_and_r(&self, divisor: &Poly<F>) -> (Poly<F>, Poly<F>);
@@ -117,7 +117,7 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
 
 #[cfg(test)]
 mod tests {
-    use ark_poly::{Polynomial, UVPolynomial};
+    use ark_poly::{Polynomial, DenseUVPolynomial};
     use ark_std::rand::Rng;
     use ark_std::test_rng;
 

@@ -84,7 +84,7 @@ mod tests {
     use ark_std::test_rng;
 
     use super::*;
-    use ark_poly::UVPolynomial;
+    use ark_poly::DenseUVPolynomial;
     use crate::pcs::PcsParams;
     use crate::pcs::tests::IdentityCommitment;
     use crate::tests::{TestKzg, TestField};
