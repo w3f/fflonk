@@ -61,7 +61,7 @@ pub(crate) mod tests {
     use ark_std::test_rng;
 
     use crate::pcs::{PcsParams, Commitment};
-    use crate::pcs::tests::IdentityCommitment;
+    use crate::pcs::IdentityCommitment;
     use crate::Poly;
 
     use super::*;

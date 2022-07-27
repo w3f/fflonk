@@ -123,7 +123,7 @@ mod tests {
 
     use crate::pcs::kzg::KZG;
     use crate::pcs::PcsParams;
-    use crate::pcs::tests::IdentityCommitment;
+    use crate::pcs::IdentityCommitment;
 
     use super::*;
     use ark_ec::PairingEngine;

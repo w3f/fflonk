@@ -172,7 +172,7 @@ mod tests {
     use ark_std::{end_timer, start_timer};
 
     use crate::pcs::PcsParams;
-    use crate::pcs::tests::IdentityCommitment;
+    use crate::pcs::IdentityCommitment;
     use crate::shplonk::tests::{random_opening, random_xss};
     use crate::tests::{TestField, TestKzg, BenchField, BenchKzg, BENCH_DEG_LOG1};
 
