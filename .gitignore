@@ -1,6 +1,3 @@
 /target
 Cargo.lock
-/.idea/.gitignore
-/.idea/fflock-clean.iml
-/.idea/modules.xml
-/.idea/vcs.xml
+/.idea
