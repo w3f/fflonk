@@ -31,7 +31,7 @@ fn scalar_mul<E: PairingEngine>(c: &mut Criterion) {
                 i = (i + 1) % n;
                 pair
             },
-            |(base, exp)| base.mul(exp.into_repr()),
+            |(base, exp)| base.mul(exp.into_bigint()),
         ));
 
     let mut i = 0;

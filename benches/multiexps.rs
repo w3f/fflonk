@@ -59,8 +59,8 @@ fn small_multiexp_vs_msm<E: PairingEngine>(c: &mut Criterion) {
         let exps_full = (0..n).map(|_| E::Fr::rand(rng)).collect::<Vec<_>>();
         let exps_128 = (0..n).map(|_| E::Fr::from(u128::rand(rng))).collect::<Vec<_>>();
 
-        let exps_full_repr = exps_full.iter().map(|exp| exp.into_repr()).collect::<Vec<_>>();
-        let exps_128_repr = exps_128.iter().map(|exp| exp.into_repr()).collect::<Vec<_>>();
+        let exps_full_repr = exps_full.iter().map(|exp| exp.into_bigint()).collect::<Vec<_>>();
+        let exps_128_repr = exps_128.iter().map(|exp| exp.into_bigint()).collect::<Vec<_>>();
 
 
         group.bench_with_input(BenchmarkId::new("small-multiexp-full", n), &n, |b, _n| {
