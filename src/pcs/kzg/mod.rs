@@ -11,7 +11,7 @@ use crate::pcs::kzg::commitment::KzgCommitment;
 use crate::pcs::kzg::urs::URS;
 use ark_poly::{Polynomial, DenseUVPolynomial};
 use ark_ec::msm::VariableBaseMSM;
-use ark_ff::{PrimeField, One, UniformRand};
+use ark_ff::{One, UniformRand};
 use ark_ec::AffineCurve;
 
 use ark_std::rand::Rng;

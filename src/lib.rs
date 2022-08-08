@@ -139,7 +139,7 @@ mod tests {
     pub(crate) type BenchKzg = KZG::<BenchCurve>;
 
     pub const BENCH_DEG_LOG1: usize = 10;
-    pub const BENCH_DEG_LOG2: usize = 16;
+    // pub const BENCH_DEG_LOG2: usize = 16;
     // const BENCH_DEG_LOG3: usize = 24; Eth 2.0 coming?
 
     impl<F: PrimeField, CS: PCS<F>> Transcript<F, CS> for (F, F) {

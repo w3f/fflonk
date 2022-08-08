@@ -51,7 +51,7 @@ pub fn sum_with_powers<F: Field, P: Polynomial<F>>(
 }
 
 
-fn interpolate<F: PrimeField>(xs: &[F], ys: &[F]) -> Poly<F> {
+pub fn interpolate<F: PrimeField>(xs: &[F], ys: &[F]) -> Poly<F> {
     let x1 = xs[0];
     let mut l = z_of_point(&x1);
     for &xj in xs.iter().skip(1) {

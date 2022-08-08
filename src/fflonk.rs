@@ -64,7 +64,7 @@ impl<F: FftField, P: DenseUVPolynomial<F>> Fflonk<F, P>
     // The input opening is given as an evaluation point x (it's t-th root)
     // and a list of values fj(x), j=1,...,t.
     // The output opening is returned as the vanishing polynomial z of the points and the remainder r.
-    fn opening_as_polynomials(t: usize, root_of_x: F, evals_at_x: &[F]) -> (P, P) {
+    pub fn opening_as_polynomials(t: usize, root_of_x: F, evals_at_x: &[F]) -> (P, P) {
         let z = Self::z_of_roots(t, root_of_x);
         let r = P::from_coefficients_slice(evals_at_x);
         (z, r)
@@ -73,7 +73,7 @@ impl<F: FftField, P: DenseUVPolynomial<F>> Fflonk<F, P>
     // Let z be some t-th root of x. Then all the t roots of x of degree t are given by zj = z*w^j, j=0,...,t-1, where w is a primitive t-th root of unity.
     // Given vi=fi(x), i=0,...,t-1 -- evaluations of t polynomials each in the same point x,
     // computes sum(vi*zj^i, i=0,...,t-1), j=0,...,t-1.
-    fn opening_as_points(t: usize, root_of_x: F, evals_at_x: &[F]) -> (Vec<F>, Vec<F>) {
+    pub fn opening_as_points(t: usize, root_of_x: F, evals_at_x: &[F]) -> (Vec<F>, Vec<F>) {
         assert_eq!(evals_at_x.len(), t); //TODO: may be 0-padded
         let roots = Self::roots(t, root_of_x);
         let evals_at_roots = roots.iter().map(|&root| {

@@ -16,7 +16,7 @@ pub struct Claim<F: PrimeField, C: Commitment<F>> {
 }
 
 impl<F: PrimeField, C: Commitment<F>> Claim<F, C> {
-    fn new<CS>(ck: &CS::CK, poly: &Poly<F>, at: F) -> Claim<F, C> where CS: PCS<F, C=C> {
+    pub fn new<CS>(ck: &CS::CK, poly: &Poly<F>, at: F) -> Claim<F, C> where CS: PCS<F, C=C> {
         Claim {
             c: CS::commit(ck, poly),
             x: at,
