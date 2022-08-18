@@ -49,9 +49,22 @@ pub trait VerifierKey: Clone + Debug {
 }
 
 
-pub trait PcsParams<CK, VK> {
-    fn ck(&self) -> CK; //TODO: trim
-    fn vk(&self) -> VK;
+/// Generates a `VerifierKey`, serializable
+pub trait RawVerifierKey: Clone + Debug + CanonicalSerialize + CanonicalDeserialize {
+    type VK: VerifierKey;
+
+    fn prepare(&self) -> Self::VK;
+}
+
+
+pub trait PcsParams {
+    type CK: CommitterKey;
+    type VK: VerifierKey;
+    type RVK: RawVerifierKey<VK=Self::VK>;
+
+    fn ck(&self) -> Self::CK; //TODO: trim
+    fn vk(&self) -> Self::VK;
+    fn raw_vk(&self) -> Self::RVK;
 }
 
 
@@ -63,7 +76,7 @@ pub trait PCS<F: PrimeField> {
 
     type CK: CommitterKey;
     type VK: VerifierKey + Into<Self::CK>;
-    type Params: PcsParams<Self::CK, Self::VK>;
+    type Params: PcsParams<CK=Self::CK, VK=Self::VK>;
 
     fn setup<R: Rng>(max_degree: usize, rng: &mut R) -> Self::Params;
 

@@ -67,13 +67,29 @@ impl VerifierKey for () {
     }
 }
 
+impl RawVerifierKey for () {
+    type VK = ();
 
-impl PcsParams<(), ()> for () {
+    fn prepare(&self) -> () {
+        ()
+    }
+}
+
+
+impl PcsParams for () {
+    type CK = ();
+    type VK = ();
+    type RVK = ();
+
     fn ck(&self) -> () {
         ()
     }
 
     fn vk(&self) -> () {
+        ()
+    }
+
+    fn raw_vk(&self) -> () {
         ()
     }
 }
@@ -83,10 +99,10 @@ pub struct IdentityCommitment {}
 
 impl<F: PrimeField> PCS<F> for IdentityCommitment {
     type C = WrappedPolynomial<F>;
-    type Params = ();
     type Proof = ();
     type CK = ();
     type VK = ();
+    type Params = ();
 
     fn setup<R: Rng>(_max_degree: usize, _rng: &mut R) -> Self::Params {
         ()
