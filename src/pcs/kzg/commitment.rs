@@ -1,9 +1,7 @@
 use ark_ec::PairingEngine;
 use crate::pcs::Commitment;
-use ark_std::ops::Add;
-use std::ops::Sub;
+use ark_std::ops::{Add, Mul, Sub};
 use ark_std::iter::Sum;
-use ark_ec::AffineCurve;
 
 use ark_serialize::*;
 use ark_std::io::{Read, Write};

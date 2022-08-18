@@ -3,6 +3,7 @@ pub mod params;
 mod commitment;
 
 use ark_ec::{PairingEngine, ProjectiveCurve};
+use ark_std::ops::Mul;
 use ark_std::marker::PhantomData;
 use crate::pcs::{PCS, CommitterKey};
 use crate::pcs::kzg::params::{KzgCommitterKey, KzgVerifierKey};
@@ -12,7 +13,6 @@ use crate::pcs::kzg::urs::URS;
 use ark_poly::{Polynomial, DenseUVPolynomial};
 use ark_ec::msm::VariableBaseMSM;
 use ark_ff::{One, UniformRand};
-use ark_ec::AffineCurve;
 
 use ark_std::rand::Rng;
 use crate::utils::ec::{small_multiexp_proj, small_multiexp_affine};
