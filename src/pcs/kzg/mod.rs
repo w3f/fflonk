@@ -50,7 +50,7 @@ impl<E: Pairing> KZG<E> {
         Self::q(p, &Self::z(x))
     }
 
-    fn parse(openings: Vec<KzgOpening<E>>) -> Vec<((E::G1Projective, E::G1Affine), E::ScalarField)> {
+    fn parse(openings: Vec<KzgOpening<E>>) -> Vec<((E::G1, E::G1Affine), E::ScalarField)> {
         openings.into_iter().map(|KzgOpening { c, x, y, proof }|
             ((proof.mul(x).add_mixed(&c), proof), y)
         ).collect()
@@ -59,11 +59,11 @@ impl<E: Pairing> KZG<E> {
     pub fn accumulate(openings: Vec<KzgOpening<E>>, rs: &[E::ScalarField], vk: &KzgVerifierKey<E>) -> AccumulatedOpening<E> {
         assert_eq!(openings.len(), rs.len());
         let openings = Self::parse(openings);
-        let ((accs, proofs), ys): ((Vec<E::G1Projective>, Vec<E::G1Affine>), Vec<E::ScalarField>) = openings.into_iter().unzip();
+        let ((accs, proofs), ys): ((Vec<E::G1>, Vec<E::G1Affine>), Vec<E::ScalarField>) = openings.into_iter().unzip();
         let sum_ry = rs.iter().zip(ys.into_iter()).map(|(r, y)| y * r).sum::<E::ScalarField>();
         let acc = vk.g1.mul(sum_ry) - small_multiexp_proj(rs, &accs);
         let proof = small_multiexp_affine(rs, &proofs);
-        E::G1Projective::batch_normalization(&mut [acc, proof]);
+        E::G1::batch_normalization(&mut [acc, proof]);
         let acc = acc.into_affine();
         let proof = proof.into_affine();
         AccumulatedOpening { acc, proof }
@@ -110,7 +110,7 @@ impl<E: Pairing> PCS<E::ScalarField> for KZG<E> {
     fn commit(ck: &KzgCommitterKey<E::G1Affine>, p: &Poly<E::ScalarField>) -> Self::C {
         assert!(p.degree() <= ck.max_degree(), "Can't commit to degree {} polynomial using {} bases", p.degree(), ck.powers_in_g1.len());
 
-        let commitment: E::G1Projective = VariableBaseMSM::msm(
+        let commitment: E::G1 = VariableBaseMSM::msm(
             &ck.powers_in_g1,
             &p.coeffs,
         );

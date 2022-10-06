@@ -36,7 +36,7 @@ fn small_multiexp_proj<E: Pairing>(c: &mut Criterion) {
     let rng = &mut test_rng();
     let n = 10;
 
-    let bases = (0..n).map(|_| E::G1Projective::rand(rng)).collect::<Vec<_>>();
+    let bases = (0..n).map(|_| E::G1::rand(rng)).collect::<Vec<_>>();
     let exps_128 = (0..n).map(|_| E::ScalarField::from(u128::rand(rng))).collect::<Vec<_>>();
 
     let mut group = c.benchmark_group("small-multiexp-proj");
@@ -67,13 +67,13 @@ fn small_multiexp_vs_msm<E: Pairing>(c: &mut Criterion) {
             b.iter(|| ec::small_multiexp_affine(&exps_full, &bases))
         });
         group.bench_with_input(BenchmarkId::new("var-base-msm-full", n), &n, |b, _n| {
-            b.iter(|| <E::G1Projective as VariableBaseMSM>::msm_bigint(&bases, &exps_full_repr))
+            b.iter(|| <E::G1 as VariableBaseMSM>::msm_bigint(&bases, &exps_full_repr))
         });
         group.bench_with_input(BenchmarkId::new("small-multiexp-128", n), &n, |b, _n| {
             b.iter(|| ec::small_multiexp_affine(&exps_128, &bases))
         });
         group.bench_with_input(BenchmarkId::new("var-base-msm-128", n), &n, |b, _n| {
-            b.iter(|| <E::G1Projective as VariableBaseMSM>::msm_bigint(&bases, &exps_128_repr))
+            b.iter(|| <E::G1 as VariableBaseMSM>::msm_bigint(&bases, &exps_128_repr))
         });
     }
 

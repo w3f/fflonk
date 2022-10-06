@@ -20,10 +20,10 @@ fn scalar_mul<E: Pairing>(c: &mut Criterion) {
     let mut exps = vec![];
     exps.resize_with(n, || E::ScalarField::rand(rng));
     // the timing depends on the exponent
-    let bases_projective = vec![E::G1Projective::rand(rng); n];
+    let bases_projective = vec![E::G1::rand(rng); n];
     let bases_affine = vec![E::G1Affine::rand(rng); n];
 
-    let _res: E::G1Projective = bases_affine[0].mul(exps[0]); // result of affine mul is projective
+    let _res: E::G1 = bases_affine[0].mul(exps[0]); // result of affine mul is projective
 
     let mut i = 0;
     group.bench_function("proj", |b|
@@ -53,7 +53,7 @@ fn scalar_mul<E: Pairing>(c: &mut Criterion) {
 fn coordinates_conversion<E: Pairing>(c: &mut Criterion) {
     let mut group = c.benchmark_group(format!("{}/into", curve_name::<E>()));
     let rng = &mut test_rng();
-    let projective = E::G1Projective::rand(rng);
+    let projective = E::G1::rand(rng);
     let affine = E::G1Affine::rand(rng);
     group.bench_function("affine", |b| b.iter(|| projective.into_affine()));
     group.bench_function("projective", |b| b.iter(|| affine.into_projective()));
@@ -63,8 +63,8 @@ fn coordinates_conversion<E: Pairing>(c: &mut Criterion) {
 fn additions<E: Pairing>(c: &mut Criterion) {
     let mut group = c.benchmark_group(format!("{}/addition", curve_name::<E>()));
     let rng = &mut test_rng();
-    let a_projective = E::G1Projective::rand(rng);
-    let b_projective = E::G1Projective::rand(rng);
+    let a_projective = E::G1::rand(rng);
+    let b_projective = E::G1::rand(rng);
     let a_affine = E::G1Affine::rand(rng);
     let b_affine = E::G1Affine::rand(rng);
     group.bench_function("projective", |b| b.iter(|| a_projective + b_projective));

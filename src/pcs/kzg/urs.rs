@@ -52,7 +52,7 @@ impl<E: Pairing> URS<E> {
         let powers_of_tau: Vec<E::ScalarField> = utils::powers(tau).take(n).collect();
         end_timer!(t_powers);
 
-        let g1 = E::G1Projective::rand(rng);
+        let g1 = E::G1::rand(rng);
         let g2 = E::G2Projective::rand(rng);
 
         let t_msm_g1 = start_timer!(|| format!("{}-scalar mul in G1", n1));
