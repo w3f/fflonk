@@ -18,7 +18,7 @@ impl <E: Pairing> Commitment<E::ScalarField> for KzgCommitment<E> {
         KzgCommitment(self.0.mul(by).into())
     }
 
-    fn combine(coeffs: &[<E as Pairing>::Fr], commitments: &[Self]) -> Self {
+    fn combine(coeffs: &[<E as Pairing>::ScalarField], commitments: &[Self]) -> Self {
         let bases = commitments.iter().map(|c| c.0).collect::<Vec<_>>();
         let prod = small_multiexp_affine(coeffs, &bases);
         KzgCommitment(prod.into())

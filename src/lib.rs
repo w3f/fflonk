@@ -129,11 +129,11 @@ mod tests {
     use ark_ec::pairing::Pairing;
 
     pub(crate) type TestCurve = ark_bls12_381::Bls12_381;
-    pub(crate) type TestField = <TestCurve as Pairing>::Fr;
+    pub(crate) type TestField = <TestCurve as Pairing>::ScalarField;
     pub(crate) type TestKzg = KZG::<TestCurve>;
 
     pub(crate) type BenchCurve = ark_bw6_761::BW6_761;
-    pub(crate) type BenchField = <BenchCurve as Pairing>::Fr;
+    pub(crate) type BenchField = <BenchCurve as Pairing>::ScalarField;
 
     #[allow(dead_code)] // used by ignored tests
     pub(crate) type BenchKzg = KZG::<BenchCurve>;
