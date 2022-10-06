@@ -1,7 +1,7 @@
 use ark_ff::PrimeField;
 use crate::aggregation::multiple::Transcript;
 use crate::pcs::PCS;
-use ark_serialize::CanonicalSerialize;
+use ark_serialize::{CanonicalSerialize, Compress};
 
 
 impl<F: PrimeField, CS: PCS<F>> Transcript<F, CS> for merlin::Transcript {
@@ -12,8 +12,8 @@ impl<F: PrimeField, CS: PCS<F>> Transcript<F, CS> for merlin::Transcript {
     }
 
     fn commit_to_q(&mut self, q: &CS::C) {
-        let mut buf = vec![0; q.serialized_size()];
-        q.serialize(&mut buf).unwrap();
+        let mut buf = vec![0; q.serialized_size(Compress::No)];
+        q.serialize_uncompressed(&mut buf).unwrap();
         self.append_message(b"q", &buf);
     }
 

@@ -4,6 +4,7 @@ pub mod poly;
 
 
 use ark_ff::Field;
+use ark_ec::pairing::Pairing;
 
 
 
@@ -13,7 +14,7 @@ pub fn powers<F: Field>(base: F) -> impl Iterator<Item=F> {
 
 
 
-pub fn curve_name<E: ark_ec::PairingEngine>() -> &'static str {
+pub fn curve_name<E: Pairing>() -> &'static str {
     // ark_ec::models::bw6::BW6<ark_bw6_761::curves::Parameters>
     let full_name = std::any::type_name::<E>();
     full_name.split_once("<").unwrap().1
