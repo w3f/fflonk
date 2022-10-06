@@ -12,7 +12,7 @@ use ark_std::{end_timer, start_timer};
 use ark_poly::Radix2EvaluationDomain;
 use ark_bls12_381::Bls12_381;
 use fflonk::pcs::PCS;
-use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
+use ark_serialize::{CanonicalSerialize, CanonicalDeserialize, Compress};
 use fflonk::pcs::kzg::KZG;
 use crate::batchy::PlonkBatchKzgTest;
 use crate::fflonky::PlonkWithFflonkTest;
@@ -96,16 +96,16 @@ fn _test_vanilla_plonk_opening<F: PrimeField, CS: PCS<F>, T: DecoyPlonk<F, CS>>(
     let commitments_to_preprocessed_polynomials = test.preprocess(&ck);
     end_timer!(t_preprocess);
 
-    let preprocessed_size = commitments_to_preprocessed_polynomials.serialized_size();
+    let preprocessed_size = commitments_to_preprocessed_polynomials.serialized_size(Compress::Yes);
 
     let t_prove = start_timer!(|| "Proving");
     let proof = test.prove(&ck);
     end_timer!(t_prove);
 
-    let proof_size = proof.serialized_size();
+    let proof_size = proof.serialized_size(Compress::Yes);
     let mut serialized_proof = vec![0; proof_size];
-    proof.serialize(&mut serialized_proof[..]).unwrap();
-    let proof = T::Proof::deserialize(&serialized_proof[..]).unwrap();
+    proof.serialize_compressed(&mut serialized_proof[..]).unwrap();
+    let proof = T::Proof::deserialize_compressed(&serialized_proof[..]).unwrap();
 
     let t_verify = start_timer!(|| "Verifying");
     let valid = test.verify(&vk, commitments_to_preprocessed_polynomials, proof);

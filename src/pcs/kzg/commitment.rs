@@ -1,3 +1,4 @@
+use ark_ec::{AffineRepr, CurveGroup};
 use ark_ec::pairing::Pairing;
 use crate::pcs::Commitment;
 use ark_std::ops::{Add, Mul, Sub};
@@ -29,7 +30,7 @@ impl<E: Pairing> Add<Self> for KzgCommitment<E> {
     type Output = KzgCommitment<E>;
 
     fn add(self, other: KzgCommitment<E>) -> KzgCommitment<E> {
-        KzgCommitment(self.0 + other.0)
+        KzgCommitment((self.0 + other.0).into_affine())
     }
 }
 
@@ -37,12 +38,12 @@ impl<E: Pairing> Sub<Self> for KzgCommitment<E> {
     type Output = KzgCommitment<E>;
 
     fn sub(self, other: KzgCommitment<E>) -> KzgCommitment<E> {
-        KzgCommitment(self.0 + -other.0)
+        KzgCommitment((self.0 + -other.0.into_group()).into_affine())
     }
 }
 
 impl<E: Pairing> Sum<Self> for KzgCommitment<E> {
     fn sum<I: Iterator<Item=Self>>(iter: I) -> KzgCommitment<E> {
-        KzgCommitment(iter.map(|c| c.0).sum())
+        KzgCommitment(iter.map(|c| c.0.into_group()).sum::<E::G1>().into_affine())
     }
 }

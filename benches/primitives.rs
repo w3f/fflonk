@@ -1,10 +1,11 @@
+use std::ops::Mul;
 use criterion::{criterion_group, criterion_main, Criterion};
 
 use ark_ff::UniformRand;
 use ark_std::test_rng;
 
 use ark_ff::PrimeField;
-use ark_ec::{AffineRepr, CurveGroup};
+use ark_ec::{AffineRepr, CurveGroup, Group};
 use ark_ec::pairing::Pairing;
 use ark_bw6_761::{BW6_761};
 use fflonk::utils::curve_name;
@@ -32,7 +33,7 @@ fn scalar_mul<E: Pairing>(c: &mut Criterion) {
                 i = (i + 1) % n;
                 pair
             },
-            |(base, exp)| base.mul(exp.into_bigint()),
+            |(base, exp)| base.mul(exp),
         ));
 
     let mut i = 0;
@@ -55,7 +56,7 @@ fn coordinates_conversion<E: Pairing>(c: &mut Criterion) {
     let projective = E::G1::rand(rng);
     let affine = E::G1Affine::rand(rng);
     group.bench_function("affine", |b| b.iter(|| projective.into_affine()));
-    group.bench_function("projective", |b| b.iter(|| affine.into_projective()));
+    group.bench_function("projective", |b| b.iter(|| affine.into_group()));
     group.finish();
 }
 
@@ -68,8 +69,8 @@ fn additions<E: Pairing>(c: &mut Criterion) {
     let b_affine = E::G1Affine::rand(rng);
     group.bench_function("projective", |b| b.iter(|| a_projective + b_projective));
     group.bench_function("affine", |b| b.iter(|| a_affine + b_affine));
-    group.bench_function("mixed", |b| b.iter(|| a_projective.add_mixed(&b_affine)));
-    group.bench_function("doubling", |b| b.iter(|| CurveGroup::double(&a_projective)));
+    group.bench_function("mixed", |b| b.iter(|| a_projective + &b_affine));
+    group.bench_function("doubling", |b| b.iter(|| a_projective.double()));
     // group.bench_function("doubling", |b| b.iter(|| CurveGroup::double_in_place(&mut b_projective)));
     group.finish();
 }

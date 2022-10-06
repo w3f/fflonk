@@ -5,7 +5,7 @@ use ark_ec::pairing::Pairing;
 use ark_std::test_rng;
 
 use fflonk::utils::ec;
-use ark_ec::msm::VariableBaseMSM;
+use ark_ec::VariableBaseMSM;
 
 
 fn small_multiexp_affine<E: Pairing>(c: &mut Criterion) {

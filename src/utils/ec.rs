@@ -1,5 +1,5 @@
 use ark_ff::{BigInteger, PrimeField, Zero};
-use ark_ec::{AffineRepr, CurveGroup};
+use ark_ec::{AffineRepr, CurveGroup, Group};
 
 pub fn naive_multiexp_affine<G: AffineRepr>(coeffs: &[G::ScalarField], bases: &[G]) -> G::Group {
     bases.iter().zip(coeffs.iter()).map(|(b, &c)| b.mul(c)).sum()
@@ -23,7 +23,7 @@ pub fn small_multiexp_affine<G: AffineRepr>(coeffs: &[G::ScalarField], bases: &[
             for coeff_idx in 0..coeffs.len() {
                 let byte = coeffs[coeff_idx][byte_idx];
                 if ((byte >> bit_idx) & 1) != 0 {
-                    acc.add_assign_mixed(&bases[coeff_idx]);
+                    acc += &bases[coeff_idx];
                 }
             }
         }
@@ -33,7 +33,7 @@ pub fn small_multiexp_affine<G: AffineRepr>(coeffs: &[G::ScalarField], bases: &[
 }
 
 pub fn small_multiexp_proj<G: CurveGroup>(coeffs: &[G::ScalarField], bases: &[G]) -> G {
-    let bases = G::batch_normalization_into_affine(bases);
+    let bases = G::normalize_batch(bases);
     small_multiexp_affine(coeffs, &bases)
 }
 

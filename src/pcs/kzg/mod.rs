@@ -12,8 +12,8 @@ use crate::Poly;
 use crate::pcs::kzg::commitment::KzgCommitment;
 use crate::pcs::kzg::urs::URS;
 use ark_poly::{Polynomial, DenseUVPolynomial};
-use ark_ec::msm::VariableBaseMSM;
-use ark_ff::{One, UniformRand};
+use ark_ec::VariableBaseMSM;
+use ark_ff::{One, UniformRand, Zero};
 
 use ark_std::rand::Rng;
 use crate::utils::ec::{small_multiexp_proj, small_multiexp_affine};
@@ -52,7 +52,7 @@ impl<E: Pairing> KZG<E> {
 
     fn parse(openings: Vec<KzgOpening<E>>) -> Vec<((E::G1, E::G1Affine), E::ScalarField)> {
         openings.into_iter().map(|KzgOpening { c, x, y, proof }|
-            ((proof.mul(x).add_mixed(&c), proof), y)
+            ((proof.mul(x) + &c, proof), y)
         ).collect()
     }
 
@@ -63,7 +63,7 @@ impl<E: Pairing> KZG<E> {
         let sum_ry = rs.iter().zip(ys.into_iter()).map(|(r, y)| y * r).sum::<E::ScalarField>();
         let acc = vk.g1.mul(sum_ry) - small_multiexp_proj(rs, &accs);
         let proof = small_multiexp_affine(rs, &proofs);
-        E::G1::batch_normalization(&mut [acc, proof]);
+        E::G1::normalize_batch(&mut [acc, proof]);
         let acc = acc.into_affine();
         let proof = proof.into_affine();
         AccumulatedOpening { acc, proof }
@@ -71,15 +71,14 @@ impl<E: Pairing> KZG<E> {
 
     fn accumulate_single(opening: KzgOpening<E>, g1: &E::G1Affine) -> AccumulatedOpening<E> {
         let KzgOpening { c, x, y, proof } = opening;
-        let acc = (g1.mul(y) - proof.mul(x).add_mixed(&c)).into_affine();
+        let acc = (g1.mul(y) - (proof.mul(x) + &c)).into_affine();
         AccumulatedOpening { acc, proof }
     }
 
     pub fn verify_accumulated(opening: AccumulatedOpening<E>, vk: &KzgVerifierKey<E>) -> bool {
-        E::product_of_pairings(&[
-            (opening.acc.into(), vk.g2.clone()),
-            (opening.proof.into(), vk.tau_in_g2.clone()),
-        ]).is_one()
+        E::multi_pairing(&[opening.acc, opening.proof],
+                         [vk.g2.clone(), vk.tau_in_g2.clone()],
+        ).is_zero()
     }
 
     pub fn verify_single(opening: KzgOpening<E>, vk: &KzgVerifierKey<E>) -> bool {
@@ -132,7 +131,7 @@ impl<E: Pairing> PCS<E::ScalarField> for KZG<E> {
         assert_eq!(c.len(), x.len());
         assert_eq!(c.len(), y.len());
         let openings = c.into_iter().zip(x.into_iter()).zip(y.into_iter()).zip(proof.into_iter())
-            .map(|(((c, x), y), proof)| KzgOpening {c: c.0, x, y, proof})
+            .map(|(((c, x), y), proof)| KzgOpening { c: c.0, x, y, proof })
             .collect();
         Self::verify_batch(openings, vk, rng)
     }

@@ -1,9 +1,9 @@
 use ark_ec::CurveGroup;
 use ark_ec::pairing::Pairing;
+use ark_ec::scalar_mul::fixed_base::FixedBase;
 use ark_std::rand::RngCore;
 use ark_ff::{UniformRand, PrimeField, FftField};
 use crate::utils;
-use ark_ec::msm::FixedBase;
 
 use ark_serialize::*;
 use ark_std::io::{Read, Write};
@@ -34,7 +34,7 @@ impl<E: Pairing> URS<E> {
         let scalars_in_g = FixedBase::msm(bits_in_scalar, window_size, &table, scalars);
         assert_eq!(scalars_in_g.len(), num_scalars);
 
-        G::batch_normalization_into_affine(&scalars_in_g)
+        G::normalize_batch(&scalars_in_g)
     }
 
     /// Generates URS of the form:
@@ -53,7 +53,7 @@ impl<E: Pairing> URS<E> {
         end_timer!(t_powers);
 
         let g1 = E::G1::rand(rng);
-        let g2 = E::G2Projective::rand(rng);
+        let g2 = E::G2::rand(rng);
 
         let t_msm_g1 = start_timer!(|| format!("{}-scalar mul in G1", n1));
         let powers_in_g1 = Self::single_base_msm(&powers_of_tau[..n1], g1);
