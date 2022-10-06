@@ -1,4 +1,5 @@
-use ark_ec::{PairingEngine, ProjectiveCurve};
+use ark_ec::ProjectiveCurve;
+use ark_ec::pairing::Pairing;
 use ark_std::rand::RngCore;
 use ark_ff::{UniformRand, PrimeField, FftField};
 use crate::utils;
@@ -16,14 +17,14 @@ use ark_std::convert::TryInto;
 // The bases are presented in affine as ark_ec::msm::VariableBaseMSM, though does double-and-add in projective, still enjoys mixed addition,
 // and Celo's https://github.com/celo-org/zexe/blob/master/algebra-core/src/curves/batch_arith.rs uses affine ops followed with with batch inversions.
 // See https://github.com/arkworks-rs/algebra/issues/60
-pub struct URS<E: PairingEngine> {
+pub struct URS<E: Pairing> {
     // g1, tau.g1, tau^2.g1, ..., tau^n1.g1, where g1 is a generator of G1
     pub powers_in_g1: Vec<E::G1Affine>,
     // g2, tau.g2, tau^2.g2, ..., tau^n2.g2, where g2 is a generator of G2
     pub powers_in_g2: Vec<E::G2Affine>,
 }
 
-impl<E: PairingEngine> URS<E> {
+impl<E: Pairing> URS<E> {
     // Multiply the same base by each scalar.
     fn single_base_msm<G: ProjectiveCurve>(scalars: &[G::ScalarField], g: G) -> Vec<G::Affine> {
         let num_scalars = scalars.len();
@@ -76,7 +77,7 @@ mod tests {
     use ark_std::test_rng;
     use crate::tests::{BenchCurve, TestCurve};
 
-    fn _test_urs_generation<E: PairingEngine>(log_n1: usize, log_n2: usize) {
+    fn _test_urs_generation<E: Pairing>(log_n1: usize, log_n2: usize) {
         let n1 = 1 << log_n1;
         let n2 = 1 << log_n2;
 

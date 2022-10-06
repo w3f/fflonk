@@ -1,11 +1,12 @@
-use ark_ec::{PairingEngine, AffineCurve};
+use ark_ec::AffineCurve;
+use ark_ec::pairing::Pairing;
 use crate::pcs::{PcsParams, CommitterKey, VerifierKey, RawVerifierKey};
 use crate::pcs::kzg::urs::URS;
 
 use ark_serialize::*;
 
 
-impl<E: PairingEngine> PcsParams for URS<E> {
+impl<E: Pairing> PcsParams for URS<E> {
     type CK = KzgCommitterKey<E::G1Affine>;
     type VK = KzgVerifierKey<E>;
     type RVK = RawKzgVerifierKey<E>;
@@ -51,7 +52,7 @@ impl<G: AffineCurve> CommitterKey for KzgCommitterKey<G> {
 /// Verifier key with G2 elements not "prepared". Exists only to be serializable.
 /// KzgVerifierKey is used for verification.
 #[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
-pub struct RawKzgVerifierKey<E: PairingEngine> {
+pub struct RawKzgVerifierKey<E: Pairing> {
     g1: E::G1Affine,
     // generator of G1
     g2: E::G2Affine,
@@ -60,7 +61,7 @@ pub struct RawKzgVerifierKey<E: PairingEngine> {
 }
 
 
-impl<E: PairingEngine> RawVerifierKey for RawKzgVerifierKey<E> {
+impl<E: Pairing> RawVerifierKey for RawKzgVerifierKey<E> {
     type VK = KzgVerifierKey<E>;
 
     /// Returns the key that is used to verify openings in a single point. It has points in G2 "prepared".
@@ -79,7 +80,7 @@ impl<E: PairingEngine> RawVerifierKey for RawKzgVerifierKey<E> {
 /// "Prepared" verifier key capable of verifying opening in a single point, given the commitment is in G1.
 /// Use RawKzgVerifierKey for serialization.
 #[derive(Clone, Debug)]
-pub struct KzgVerifierKey<E: PairingEngine> {
+pub struct KzgVerifierKey<E: Pairing> {
     // generator of G1
     pub(crate) g1: E::G1Affine,
     // G1Prepared is just a wrapper around G1Affine // TODO: fixed-base precomputations
@@ -90,9 +91,9 @@ pub struct KzgVerifierKey<E: PairingEngine> {
     pub(crate) tau_in_g2: E::G2Prepared, // G2Prepared can be used as a pairing RHS only
 }
 
-impl<E: PairingEngine> VerifierKey for KzgVerifierKey<E> {}
+impl<E: Pairing> VerifierKey for KzgVerifierKey<E> {}
 
-impl<E: PairingEngine> From<KzgVerifierKey<E>> for KzgCommitterKey<E::G1Affine> {
+impl<E: Pairing> From<KzgVerifierKey<E>> for KzgCommitterKey<E::G1Affine> {
     fn from(vk: KzgVerifierKey<E>) -> Self {
         KzgCommitterKey {
             powers_in_g1: vec![vk.g1]

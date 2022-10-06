@@ -2,7 +2,8 @@ pub mod urs;
 pub mod params;
 mod commitment;
 
-use ark_ec::{PairingEngine, ProjectiveCurve};
+use ark_ec::ProjectiveCurve;
+use ark_ec::pairing::Pairing;
 use ark_std::ops::Mul;
 use ark_std::marker::PhantomData;
 use crate::pcs::{PCS, CommitterKey};
@@ -17,26 +18,26 @@ use ark_ff::{One, UniformRand};
 use ark_std::rand::Rng;
 use crate::utils::ec::{small_multiexp_proj, small_multiexp_affine};
 
-pub struct KZG<E: PairingEngine> {
+pub struct KZG<E: Pairing> {
     _engine: PhantomData<E>,
 }
 
 /// e(acc, g2) = e(proof, tau.g2)
 #[derive(Clone, Debug)]
-pub struct AccumulatedOpening<E: PairingEngine> {
+pub struct AccumulatedOpening<E: Pairing> {
     pub acc: E::G1Affine,
     pub proof: E::G1Affine,
 }
 
 #[derive(Clone, Debug)]
-pub struct KzgOpening<E: PairingEngine> {
+pub struct KzgOpening<E: Pairing> {
     pub c: E::G1Affine,
     pub x: E::Fr,
     pub y: E::Fr,
     pub proof: E::G1Affine,
 }
 
-impl<E: PairingEngine> KZG<E> {
+impl<E: Pairing> KZG<E> {
     fn z(x: E::Fr) -> Poly<E::Fr> {
         Poly::from_coefficients_slice(&[-x, E::Fr::one()])
     }
@@ -94,7 +95,7 @@ impl<E: PairingEngine> KZG<E> {
     }
 }
 
-impl<E: PairingEngine> PCS<E::Fr> for KZG<E> {
+impl<E: Pairing> PCS<E::Fr> for KZG<E> {
     type C = KzgCommitment<E>;
     type Proof = E::G1Affine;
 
@@ -148,7 +149,7 @@ mod tests {
     use ark_std::{end_timer, start_timer};
     use crate::tests::{BenchCurve, TestCurve};
 
-    fn _test_minimal_kzg<E: PairingEngine>(log_n: usize) {
+    fn _test_minimal_kzg<E: Pairing>(log_n: usize) {
         let rng = &mut test_rng();
 
         let max_degree = (1 << log_n) - 1;
@@ -177,7 +178,7 @@ mod tests {
         end_timer!(t_verify);
     }
 
-    fn random_openings<R: Rng, E: PairingEngine>(
+    fn random_openings<R: Rng, E: Pairing>(
         k: usize,
         ck: &KzgCommitterKey<E::G1Affine>,
         xs: Vec<E::Fr>,
@@ -197,7 +198,7 @@ mod tests {
         }).collect()
     }
 
-    fn _test_batch_verification<E: PairingEngine>(log_n: usize, k: usize) {
+    fn _test_batch_verification<E: Pairing>(log_n: usize, k: usize) {
         let rng = &mut test_rng();
 
         let max_degree = (1 << log_n) - 1;

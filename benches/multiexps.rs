@@ -1,14 +1,14 @@
 use criterion::{criterion_group, criterion_main, Criterion, BenchmarkId};
 
 use ark_ff::{UniformRand, PrimeField};
-use ark_ec::PairingEngine;
+use ark_ec::pairing::Pairing;
 use ark_std::test_rng;
 
 use fflonk::utils::ec;
 use ark_ec::msm::VariableBaseMSM;
 
 
-fn small_multiexp_affine<E: PairingEngine>(c: &mut Criterion) {
+fn small_multiexp_affine<E: Pairing>(c: &mut Criterion) {
     let rng = &mut test_rng();
     let n = 10;
 
@@ -32,7 +32,7 @@ fn small_multiexp_affine<E: PairingEngine>(c: &mut Criterion) {
     group.finish();
 }
 
-fn small_multiexp_proj<E: PairingEngine>(c: &mut Criterion) {
+fn small_multiexp_proj<E: Pairing>(c: &mut Criterion) {
     let rng = &mut test_rng();
     let n = 10;
 
@@ -49,7 +49,7 @@ fn small_multiexp_proj<E: PairingEngine>(c: &mut Criterion) {
     group.finish();
 }
 
-fn small_multiexp_vs_msm<E: PairingEngine>(c: &mut Criterion) {
+fn small_multiexp_vs_msm<E: Pairing>(c: &mut Criterion) {
     let rng = &mut test_rng();
     let mut group = c.benchmark_group("small-multiexp-vs-msm");
 

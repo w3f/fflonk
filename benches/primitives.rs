@@ -4,12 +4,13 @@ use ark_ff::UniformRand;
 use ark_std::test_rng;
 
 use ark_ff::PrimeField;
-use ark_ec::{PairingEngine, ProjectiveCurve, AffineCurve};
+use ark_ec::{ProjectiveCurve, AffineCurve};
+use ark_ec::pairing::Pairing;
 use ark_bw6_761::{BW6_761};
 use fflonk::utils::curve_name;
 
 
-fn scalar_mul<E: PairingEngine>(c: &mut Criterion) {
+fn scalar_mul<E: Pairing>(c: &mut Criterion) {
     let mut group = c.benchmark_group(format!("{}/scalar-mul", curve_name::<E>()));
 
     let rng = &mut test_rng();
@@ -48,7 +49,7 @@ fn scalar_mul<E: PairingEngine>(c: &mut Criterion) {
     group.finish();
 }
 
-fn coordinates_conversion<E: PairingEngine>(c: &mut Criterion) {
+fn coordinates_conversion<E: Pairing>(c: &mut Criterion) {
     let mut group = c.benchmark_group(format!("{}/into", curve_name::<E>()));
     let rng = &mut test_rng();
     let projective = E::G1Projective::rand(rng);
@@ -58,7 +59,7 @@ fn coordinates_conversion<E: PairingEngine>(c: &mut Criterion) {
     group.finish();
 }
 
-fn additions<E: PairingEngine>(c: &mut Criterion) {
+fn additions<E: Pairing>(c: &mut Criterion) {
     let mut group = c.benchmark_group(format!("{}/addition", curve_name::<E>()));
     let rng = &mut test_rng();
     let a_projective = E::G1Projective::rand(rng);
