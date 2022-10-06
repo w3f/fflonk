@@ -18,7 +18,7 @@ fn scalar_mul<E: Pairing>(c: &mut Criterion) {
     let n = 100;
 
     let mut exps = vec![];
-    exps.resize_with(n, || E::Fr::rand(rng));
+    exps.resize_with(n, || E::ScalarField::rand(rng));
     // the timing depends on the exponent
     let bases_projective = vec![E::G1Projective::rand(rng); n];
     let bases_affine = vec![E::G1Affine::rand(rng); n];

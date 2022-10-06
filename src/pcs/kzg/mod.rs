@@ -32,35 +32,35 @@ pub struct AccumulatedOpening<E: Pairing> {
 #[derive(Clone, Debug)]
 pub struct KzgOpening<E: Pairing> {
     pub c: E::G1Affine,
-    pub x: E::Fr,
-    pub y: E::Fr,
+    pub x: E::ScalarField,
+    pub y: E::ScalarField,
     pub proof: E::G1Affine,
 }
 
 impl<E: Pairing> KZG<E> {
-    fn z(x: E::Fr) -> Poly<E::Fr> {
-        Poly::from_coefficients_slice(&[-x, E::Fr::one()])
+    fn z(x: E::ScalarField) -> Poly<E::ScalarField> {
+        Poly::from_coefficients_slice(&[-x, E::ScalarField::one()])
     }
 
-    fn q(p: &Poly<E::Fr>, d: &Poly<E::Fr>) -> Poly<E::Fr> {
+    fn q(p: &Poly<E::ScalarField>, d: &Poly<E::ScalarField>) -> Poly<E::ScalarField> {
         p / d
     }
 
-    fn compute_quotient(p: &Poly<E::Fr>, x: E::Fr) -> Poly<E::Fr> {
+    fn compute_quotient(p: &Poly<E::ScalarField>, x: E::ScalarField) -> Poly<E::ScalarField> {
         Self::q(p, &Self::z(x))
     }
 
-    fn parse(openings: Vec<KzgOpening<E>>) -> Vec<((E::G1Projective, E::G1Affine), E::Fr)> {
+    fn parse(openings: Vec<KzgOpening<E>>) -> Vec<((E::G1Projective, E::G1Affine), E::ScalarField)> {
         openings.into_iter().map(|KzgOpening { c, x, y, proof }|
             ((proof.mul(x).add_mixed(&c), proof), y)
         ).collect()
     }
 
-    pub fn accumulate(openings: Vec<KzgOpening<E>>, rs: &[E::Fr], vk: &KzgVerifierKey<E>) -> AccumulatedOpening<E> {
+    pub fn accumulate(openings: Vec<KzgOpening<E>>, rs: &[E::ScalarField], vk: &KzgVerifierKey<E>) -> AccumulatedOpening<E> {
         assert_eq!(openings.len(), rs.len());
         let openings = Self::parse(openings);
-        let ((accs, proofs), ys): ((Vec<E::G1Projective>, Vec<E::G1Affine>), Vec<E::Fr>) = openings.into_iter().unzip();
-        let sum_ry = rs.iter().zip(ys.into_iter()).map(|(r, y)| y * r).sum::<E::Fr>();
+        let ((accs, proofs), ys): ((Vec<E::G1Projective>, Vec<E::G1Affine>), Vec<E::ScalarField>) = openings.into_iter().unzip();
+        let sum_ry = rs.iter().zip(ys.into_iter()).map(|(r, y)| y * r).sum::<E::ScalarField>();
         let acc = vk.g1.mul(sum_ry) - small_multiexp_proj(rs, &accs);
         let proof = small_multiexp_affine(rs, &proofs);
         E::G1Projective::batch_normalization(&mut [acc, proof]);
@@ -88,14 +88,14 @@ impl<E: Pairing> KZG<E> {
     }
 
     pub fn verify_batch<R: Rng>(openings: Vec<KzgOpening<E>>, vk: &KzgVerifierKey<E>, rng: &mut R) -> bool {
-        let one = std::iter::once(E::Fr::one());
-        let coeffs: Vec<E::Fr> = one.chain((1..openings.len()).map(|_| u128::rand(rng).into())).collect();
+        let one = std::iter::once(E::ScalarField::one());
+        let coeffs: Vec<E::ScalarField> = one.chain((1..openings.len()).map(|_| u128::rand(rng).into())).collect();
         let acc_opening = Self::accumulate(openings, &coeffs, vk);
         Self::verify_accumulated(acc_opening, vk)
     }
 }
 
-impl<E: Pairing> PCS<E::Fr> for KZG<E> {
+impl<E: Pairing> PCS<E::ScalarField> for KZG<E> {
     type C = KzgCommitment<E>;
     type Proof = E::G1Affine;
 
@@ -107,7 +107,7 @@ impl<E: Pairing> PCS<E::Fr> for KZG<E> {
         URS::<E>::generate(max_degree + 1, 2, rng)
     }
 
-    fn commit(ck: &KzgCommitterKey<E::G1Affine>, p: &Poly<E::Fr>) -> Self::C {
+    fn commit(ck: &KzgCommitterKey<E::G1Affine>, p: &Poly<E::ScalarField>) -> Self::C {
         assert!(p.degree() <= ck.max_degree(), "Can't commit to degree {} polynomial using {} bases", p.degree(), ck.powers_in_g1.len());
 
         let commitment: E::G1Projective = VariableBaseMSM::msm(
@@ -118,17 +118,17 @@ impl<E: Pairing> PCS<E::Fr> for KZG<E> {
         KzgCommitment(commitment.into())
     }
 
-    fn open(ck: &KzgCommitterKey<E::G1Affine>, p: &Poly<E::Fr>, x: E::Fr) -> Self::Proof {
+    fn open(ck: &KzgCommitterKey<E::G1Affine>, p: &Poly<E::ScalarField>, x: E::ScalarField) -> Self::Proof {
         let q = Self::compute_quotient(p, x);
         Self::commit(ck, &q).0
     }
 
-    fn verify(vk: &KzgVerifierKey<E>, c: Self::C, x: E::Fr, y: E::Fr, proof: Self::Proof) -> bool {
+    fn verify(vk: &KzgVerifierKey<E>, c: Self::C, x: E::ScalarField, y: E::ScalarField, proof: Self::Proof) -> bool {
         let opening = KzgOpening { c: c.0, x, y, proof };
         Self::verify_single(opening, vk)
     }
 
-    fn batch_verify<R: Rng>(vk: &KzgVerifierKey<E>, c: Vec<Self::C>, x: Vec<E::Fr>, y: Vec<E::Fr>, proof: Vec<Self::Proof>, rng: &mut R) -> bool {
+    fn batch_verify<R: Rng>(vk: &KzgVerifierKey<E>, c: Vec<Self::C>, x: Vec<E::ScalarField>, y: Vec<E::ScalarField>, proof: Vec<Self::Proof>, rng: &mut R) -> bool {
         assert_eq!(c.len(), x.len());
         assert_eq!(c.len(), y.len());
         let openings = c.into_iter().zip(x.into_iter()).zip(y.into_iter()).zip(proof.into_iter())
@@ -161,8 +161,8 @@ mod tests {
         let ck = urs.ck();
         let vk = urs.vk();
 
-        let p = Poly::<E::Fr>::rand(ck.max_degree(), rng);
-        let x = E::Fr::rand(rng);
+        let p = Poly::<E::ScalarField>::rand(ck.max_degree(), rng);
+        let x = E::ScalarField::rand(rng);
         let z = p.evaluate(&x);
 
         let t_commit = start_timer!(|| format!("Committing to a dense degree-{} polynomial", ck.max_degree()));
@@ -181,7 +181,7 @@ mod tests {
     fn random_openings<R: Rng, E: Pairing>(
         k: usize,
         ck: &KzgCommitterKey<E::G1Affine>,
-        xs: Vec<E::Fr>,
+        xs: Vec<E::ScalarField>,
         rng: &mut R,
     ) -> Vec<KzgOpening<E>>
     {
@@ -189,7 +189,7 @@ mod tests {
         let d = ck.max_degree();
 
         (0..k).map(|i| {
-            let f = Poly::<E::Fr>::rand(d, rng);
+            let f = Poly::<E::ScalarField>::rand(d, rng);
             let x = xs[i];
             let y = f.evaluate(&x);
             let c = KZG::<E>::commit(ck, &f).0;
@@ -206,13 +206,13 @@ mod tests {
         let urs = KZG::<E>::setup(max_degree, rng);
         let (ck, vk) = (urs.ck(), urs.vk());
 
-        let xs = (0..k).map(|_| E::Fr::rand(rng)).collect();
+        let xs = (0..k).map(|_| E::ScalarField::rand(rng)).collect();
         let openings = random_openings(k, &ck, xs, rng);
-        let t_verify_batch = start_timer!(|| format!("Batch verification of {} openings of degree ~2^{} on {} with {}-bit xs", k, log_n, crate::utils::curve_name::<E>(), E::Fr::MODULUS_BIT_SIZE));
+        let t_verify_batch = start_timer!(|| format!("Batch verification of {} openings of degree ~2^{} on {} with {}-bit xs", k, log_n, crate::utils::curve_name::<E>(), E::ScalarField::MODULUS_BIT_SIZE));
         assert!(KZG::<E>::verify_batch(openings, &vk, rng));
         end_timer!(t_verify_batch);
 
-        let xs = (0..k).map(|_| E::Fr::from(u128::rand(rng))).collect();
+        let xs = (0..k).map(|_| E::ScalarField::from(u128::rand(rng))).collect();
         let openings = random_openings(k, &ck, xs, rng);
         let t_verify_batch = start_timer!(|| format!("Batch verification of {} openings of degree ~2^{} on {} with {}-bit xs", k, log_n, crate::utils::curve_name::<E>(), 128));
         assert!(KZG::<E>::verify_batch(openings, &vk, rng));

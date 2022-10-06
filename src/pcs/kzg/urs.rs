@@ -40,16 +40,16 @@ impl<E: Pairing> URS<E> {
     /// Generates URS of the form:
     /// g1, tau.g1, ..., tau^(n1-1).g1, g2, tau.g2, ..., tau^(n2-1).g2
     pub fn generate<R: RngCore>(n1: usize, n2: usize, rng: &mut R) -> Self {
-        let tau = E::Fr::rand(rng);
+        let tau = E::ScalarField::rand(rng);
         let n = n1.max(n2);
         assert!(n > 0, "nothing to generate");
 
         // Until ECFFT for more curves is implemented, see https://github.com/wborgeaud/ecfft-bn254
-        assert!(n <= 1 << E::Fr::TWO_ADICITY, "number of bases exceeds curve 2-adicity");
+        assert!(n <= 1 << E::ScalarField::TWO_ADICITY, "number of bases exceeds curve 2-adicity");
 
         let t_powers = start_timer!(|| format!("Computing {} scalars powers", n));
         // tau^0, ..., tau^(n-1))
-        let powers_of_tau: Vec<E::Fr> = utils::powers(tau).take(n).collect();
+        let powers_of_tau: Vec<E::ScalarField> = utils::powers(tau).take(n).collect();
         end_timer!(t_powers);
 
         let g1 = E::G1Projective::rand(rng);

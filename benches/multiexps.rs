@@ -13,8 +13,8 @@ fn small_multiexp_affine<E: Pairing>(c: &mut Criterion) {
     let n = 10;
 
     let bases = (0..n).map(|_| E::G1Affine::rand(rng)).collect::<Vec<_>>();
-    let exps_full = (0..n).map(|_| E::Fr::rand(rng)).collect::<Vec<_>>();
-    let exps_128 = (0..n).map(|_| E::Fr::from(u128::rand(rng))).collect::<Vec<_>>();
+    let exps_full = (0..n).map(|_| E::ScalarField::rand(rng)).collect::<Vec<_>>();
+    let exps_128 = (0..n).map(|_| E::ScalarField::from(u128::rand(rng))).collect::<Vec<_>>();
 
     let mut group = c.benchmark_group("small-multiexp-affine");
     group.bench_with_input(BenchmarkId::new("small-multiexp-full", n), &n, |b, _n| {
@@ -37,7 +37,7 @@ fn small_multiexp_proj<E: Pairing>(c: &mut Criterion) {
     let n = 10;
 
     let bases = (0..n).map(|_| E::G1Projective::rand(rng)).collect::<Vec<_>>();
-    let exps_128 = (0..n).map(|_| E::Fr::from(u128::rand(rng))).collect::<Vec<_>>();
+    let exps_128 = (0..n).map(|_| E::ScalarField::from(u128::rand(rng))).collect::<Vec<_>>();
 
     let mut group = c.benchmark_group("small-multiexp-proj");
     group.bench_with_input(BenchmarkId::new("in_affine", n), &n, |b, _n| {
@@ -56,8 +56,8 @@ fn small_multiexp_vs_msm<E: Pairing>(c: &mut Criterion) {
     for n in [10, 20] {
         let bases = (0..n).map(|_| E::G1Affine::rand(rng)).collect::<Vec<_>>();
 
-        let exps_full = (0..n).map(|_| E::Fr::rand(rng)).collect::<Vec<_>>();
-        let exps_128 = (0..n).map(|_| E::Fr::from(u128::rand(rng))).collect::<Vec<_>>();
+        let exps_full = (0..n).map(|_| E::ScalarField::rand(rng)).collect::<Vec<_>>();
+        let exps_128 = (0..n).map(|_| E::ScalarField::from(u128::rand(rng))).collect::<Vec<_>>();
 
         let exps_full_repr = exps_full.iter().map(|exp| exp.into_bigint()).collect::<Vec<_>>();
         let exps_128_repr = exps_128.iter().map(|exp| exp.into_bigint()).collect::<Vec<_>>();

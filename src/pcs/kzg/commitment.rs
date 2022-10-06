@@ -13,8 +13,8 @@ use crate::utils::ec::{small_multiexp_affine};
 pub struct KzgCommitment<E: Pairing>(pub E::G1Affine);
 
 
-impl <E: Pairing> Commitment<E::Fr> for KzgCommitment<E> {
-    fn mul(&self, by: E::Fr) -> KzgCommitment<E> {
+impl <E: Pairing> Commitment<E::ScalarField> for KzgCommitment<E> {
+    fn mul(&self, by: E::ScalarField) -> KzgCommitment<E> {
         KzgCommitment(self.0.mul(by).into())
     }
 
