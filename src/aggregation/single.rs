@@ -3,8 +3,7 @@ use crate::pcs::{Commitment, PCS};
 use crate::Poly;
 use ark_poly::Polynomial;
 use crate::utils::ec::small_multiexp_affine;
-use ark_ec::AffineCurve;
-use ark_ec::CurveGroup;
+use ark_ec::{AffineRepr, CurveGroup};
 
 /// A tuple (c, x, y) of the form (G, F, F). Represents a claim that {f(x) = y, for a polynomial f such that commit(f) = c}.
 /// In other words, it is am instance in some language of "correct polynomial evaluations".
@@ -61,7 +60,7 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>>(claims: &[Claim<F, CS::C>], r
 pub fn aggregate_claims_multiexp<F, C>(cs: Vec<C>, ys: Vec<F>, rs: &[F]) -> (C, F)
     where
         F: PrimeField,
-        C: AffineCurve<ScalarField=F>
+        C: AffineRepr<ScalarField=F>
 {
     assert_eq!(cs.len(), rs.len());
     assert_eq!(ys.len(), rs.len());

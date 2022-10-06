@@ -4,8 +4,7 @@ use ark_ff::UniformRand;
 use ark_std::test_rng;
 
 use ark_ff::PrimeField;
-use ark_ec::AffineCurve;
-use ark_ec::CurveGroup;
+use ark_ec::{AffineRepr, CurveGroup};
 use ark_ec::pairing::Pairing;
 use ark_bw6_761::{BW6_761};
 use fflonk::utils::curve_name;

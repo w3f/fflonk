@@ -1,4 +1,4 @@
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use ark_ec::pairing::Pairing;
 use crate::pcs::{PcsParams, CommitterKey, VerifierKey, RawVerifierKey};
 use crate::pcs::kzg::urs::URS;
@@ -37,12 +37,12 @@ impl<E: Pairing> PcsParams for URS<E> {
 
 /// Used to commit to and to open univariate polynomials of degree up to self.max_degree().
 #[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
-pub struct KzgCommitterKey<G: AffineCurve> {
+pub struct KzgCommitterKey<G: AffineRepr> {
     // G1, tau.G1, tau^2.G1, ..., tau^n1.G1
     pub(crate) powers_in_g1: Vec<G>,
 }
 
-impl<G: AffineCurve> CommitterKey for KzgCommitterKey<G> {
+impl<G: AffineRepr> CommitterKey for KzgCommitterKey<G> {
     fn max_degree(&self) -> usize {
         self.powers_in_g1.len() - 1
     }
