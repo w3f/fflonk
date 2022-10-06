@@ -3,7 +3,8 @@ use crate::pcs::{Commitment, PCS};
 use crate::Poly;
 use ark_poly::Polynomial;
 use crate::utils::ec::small_multiexp_affine;
-use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ec::AffineCurve;
+use ark_ec::CurveGroup;
 
 /// A tuple (c, x, y) of the form (G, F, F). Represents a claim that {f(x) = y, for a polynomial f such that commit(f) = c}.
 /// In other words, it is am instance in some language of "correct polynomial evaluations".

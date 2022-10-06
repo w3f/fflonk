@@ -2,7 +2,7 @@ pub mod urs;
 pub mod params;
 mod commitment;
 
-use ark_ec::ProjectiveCurve;
+use ark_ec::CurveGroup;
 use ark_ec::pairing::Pairing;
 use ark_std::ops::Mul;
 use ark_std::marker::PhantomData;

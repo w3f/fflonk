@@ -1,4 +1,4 @@
-use ark_ec::ProjectiveCurve;
+use ark_ec::CurveGroup;
 use ark_ec::pairing::Pairing;
 use ark_std::rand::RngCore;
 use ark_ff::{UniformRand, PrimeField, FftField};
@@ -26,7 +26,7 @@ pub struct URS<E: Pairing> {
 
 impl<E: Pairing> URS<E> {
     // Multiply the same base by each scalar.
-    fn single_base_msm<G: ProjectiveCurve>(scalars: &[G::ScalarField], g: G) -> Vec<G::Affine> {
+    fn single_base_msm<G: CurveGroup>(scalars: &[G::ScalarField], g: G) -> Vec<G::Affine> {
         let num_scalars = scalars.len();
         let window_size = FixedBase::get_mul_window_size(num_scalars);
         let bits_in_scalar = G::ScalarField::MODULUS_BIT_SIZE.try_into().unwrap();
