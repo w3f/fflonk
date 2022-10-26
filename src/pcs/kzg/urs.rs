@@ -12,23 +12,31 @@ use ark_std::{end_timer, start_timer};
 
 /// Updatable Universal References String
 #[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
-// The bases are presented in affine as ark_ec::msm::VariableBaseMSM, though does double-and-add in projective, still enjoys mixed addition,
-// and Celo's https://github.com/celo-org/zexe/blob/master/algebra-core/src/curves/batch_arith.rs uses affine ops followed with with batch inversions.
-// See https://github.com/arkworks-rs/algebra/issues/60
 pub struct URS<E: Pairing> {
-    // g1, tau.g1, tau^2.g1, ..., tau^n1.g1, where g1 is a generator of G1
+    // g1, tau.g1, tau^2.g1, ..., tau^{n1-1}.g1, where g1 is a generator of G1
     pub powers_in_g1: Vec<E::G1Affine>,
-    // g2, tau.g2, tau^2.g2, ..., tau^n2.g2, where g2 is a generator of G2
+    // g2, tau.g2, tau^2.g2, ..., tau^{n2-1}.g2, where g2 is a generator of G2
     pub powers_in_g2: Vec<E::G2Affine>,
 }
 
 impl<E: Pairing> URS<E> {
-
-
-    /// Generates URS of the form:
-    /// g1, tau.g1, ..., tau^(n1-1).g1, g2, tau.g2, ..., tau^(n2-1).g2
+    /// Generates a random URS with the given number of G1 and G2 bases.
     pub fn generate<R: RngCore>(n1: usize, n2: usize, rng: &mut R) -> Self {
+        let (tau, g1, g2) = Self::random_params(rng);
+        Self::from_trapdoor(tau, n1, n2, g1, g2)
+    }
+
+    /// Generates random parameters for a URS.
+    /// Returns (trapdoor, G1 generator, G2 generator).
+    pub fn random_params<R: RngCore>(rng: &mut R) -> (E::ScalarField, E::G1, E::G2) {
         let tau = E::ScalarField::rand(rng);
+        let g1 = E::G1::rand(rng);
+        let g2 = E::G2::rand(rng);
+        (tau, g1 , g2)
+    }
+
+    /// Generates URS of the form: g1, tau.g1, ..., tau^{n1-1}.g1, g2, tau.g2, ..., tau^{n2-1}.g2
+    pub fn from_trapdoor(tau: E::ScalarField, n1: usize, n2: usize, g1: E::G1, g2: E::G2) -> Self {
         let n = n1.max(n2);
         assert!(n > 0, "nothing to generate");
 
@@ -39,9 +47,6 @@ impl<E: Pairing> URS<E> {
         // tau^0, ..., tau^(n-1))
         let powers_of_tau: Vec<E::ScalarField> = utils::powers(tau).take(n).collect();
         end_timer!(t_powers);
-
-        let g1 = E::G1::rand(rng);
-        let g2 = E::G2::rand(rng);
 
         let t_msm_g1 = start_timer!(|| format!("{}-scalar mul in G1", n1));
         let powers_in_g1 = single_base_msm(&powers_of_tau[..n1], g1);
