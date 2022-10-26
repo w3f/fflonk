@@ -1,6 +1,7 @@
 pub mod urs;
 pub mod params;
 mod commitment;
+mod lagrange;
 
 use ark_ec::CurveGroup;
 use ark_ec::pairing::Pairing;
