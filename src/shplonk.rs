@@ -9,7 +9,6 @@ use crate::pcs::PCS;
 use crate::Poly;
 
 use ark_serialize::*;
-use ark_std::io::{Read, Write};
 
 pub struct Shplonk<F: PrimeField, CS: PCS<F>> {
     _field: PhantomData<F>,

@@ -11,7 +11,6 @@ use fflonk::pcs::PcsParams;
 use fflonk::shplonk::AggregateProof;
 use std::marker::PhantomData;
 use ark_serialize::*;
-use ark_std::io::{Read, Write};
 
 
 impl<F: PrimeField> VanillaPlonkAssignments<F> {

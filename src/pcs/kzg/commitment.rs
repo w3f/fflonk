@@ -5,7 +5,6 @@ use ark_std::ops::{Add, Mul, Sub};
 use ark_std::iter::Sum;
 
 use ark_serialize::*;
-use ark_std::io::{Read, Write};
 use crate::utils::ec::{small_multiexp_affine};
 
 

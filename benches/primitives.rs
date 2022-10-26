@@ -4,7 +4,6 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use ark_ff::UniformRand;
 use ark_std::test_rng;
 
-use ark_ff::PrimeField;
 use ark_ec::{AffineRepr, CurveGroup, Group};
 use ark_ec::pairing::Pairing;
 use ark_bw6_761::{BW6_761};

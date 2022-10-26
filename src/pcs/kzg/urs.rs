@@ -6,7 +6,6 @@ use ark_ff::{UniformRand, PrimeField, FftField};
 use crate::utils;
 
 use ark_serialize::*;
-use ark_std::io::{Read, Write};
 
 use ark_std::{end_timer, start_timer};
 use ark_std::convert::TryInto;

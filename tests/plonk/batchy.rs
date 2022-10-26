@@ -8,7 +8,6 @@ use ark_std::rand::Rng;
 use ark_std::{end_timer, start_timer, test_rng};
 use fflonk::utils::poly;
 use ark_serialize::*;
-use ark_std::io::{Read, Write};
 
 
 impl<F: PrimeField> VanillaPlonkAssignments<F> {
