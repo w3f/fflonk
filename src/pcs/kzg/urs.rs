@@ -1,14 +1,13 @@
-use ark_ec::CurveGroup;
 use ark_ec::pairing::Pairing;
-use ark_ec::scalar_mul::fixed_base::FixedBase;
 use ark_std::rand::RngCore;
-use ark_ff::{UniformRand, PrimeField, FftField};
+use ark_ff::{UniformRand, FftField};
 use crate::utils;
+use crate::utils::ec::single_base_msm;
 
 use ark_serialize::*;
 
 use ark_std::{end_timer, start_timer};
-use ark_std::convert::TryInto;
+
 
 
 /// Updatable Universal References String
@@ -24,17 +23,7 @@ pub struct URS<E: Pairing> {
 }
 
 impl<E: Pairing> URS<E> {
-    // Multiply the same base by each scalar.
-    fn single_base_msm<G: CurveGroup>(scalars: &[G::ScalarField], g: G) -> Vec<G::Affine> {
-        let num_scalars = scalars.len();
-        let window_size = FixedBase::get_mul_window_size(num_scalars);
-        let bits_in_scalar = G::ScalarField::MODULUS_BIT_SIZE.try_into().unwrap();
-        let table = FixedBase::get_window_table(bits_in_scalar, window_size, g);
-        let scalars_in_g = FixedBase::msm(bits_in_scalar, window_size, &table, scalars);
-        assert_eq!(scalars_in_g.len(), num_scalars);
 
-        G::normalize_batch(&scalars_in_g)
-    }
 
     /// Generates URS of the form:
     /// g1, tau.g1, ..., tau^(n1-1).g1, g2, tau.g2, ..., tau^(n2-1).g2
@@ -55,11 +44,11 @@ impl<E: Pairing> URS<E> {
         let g2 = E::G2::rand(rng);
 
         let t_msm_g1 = start_timer!(|| format!("{}-scalar mul in G1", n1));
-        let powers_in_g1 = Self::single_base_msm(&powers_of_tau[..n1], g1);
+        let powers_in_g1 = single_base_msm(&powers_of_tau[..n1], g1);
         end_timer!(t_msm_g1);
 
         let t_msm_g2 = start_timer!(|| format!("{}-scalar mul in G1", n2));
-        let powers_in_g2 = Self::single_base_msm(&powers_of_tau[..n2], g2);
+        let powers_in_g2 = single_base_msm(&powers_of_tau[..n2], g2);
         end_timer!(t_msm_g2);
 
         URS {
