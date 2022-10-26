@@ -7,7 +7,7 @@ use ark_ec::pairing::Pairing;
 use ark_std::ops::Mul;
 use ark_std::marker::PhantomData;
 use crate::pcs::{PCS, CommitterKey};
-use crate::pcs::kzg::params::{KzgCommitterKey, KzgVerifierKey};
+use crate::pcs::kzg::params::{MonomialCK, KzgVerifierKey};
 use crate::Poly;
 use crate::pcs::kzg::commitment::KzgCommitment;
 use crate::pcs::kzg::urs::URS;
@@ -98,7 +98,7 @@ impl<E: Pairing> PCS<E::ScalarField> for KZG<E> {
     type C = KzgCommitment<E>;
     type Proof = E::G1Affine;
 
-    type CK = KzgCommitterKey<E::G1Affine>;
+    type CK = MonomialCK<E::G1Affine>;
     type VK = KzgVerifierKey<E>;
     type Params = URS<E>;
 
@@ -106,7 +106,7 @@ impl<E: Pairing> PCS<E::ScalarField> for KZG<E> {
         URS::<E>::generate(max_degree + 1, 2, rng)
     }
 
-    fn commit(ck: &KzgCommitterKey<E::G1Affine>, p: &Poly<E::ScalarField>) -> Self::C {
+    fn commit(ck: &MonomialCK<E::G1Affine>, p: &Poly<E::ScalarField>) -> Self::C {
         assert!(p.degree() <= ck.max_degree(), "Can't commit to degree {} polynomial using {} bases", p.degree(), ck.powers_in_g1.len());
 
         let commitment: E::G1 = VariableBaseMSM::msm(
@@ -117,7 +117,7 @@ impl<E: Pairing> PCS<E::ScalarField> for KZG<E> {
         KzgCommitment(commitment.into())
     }
 
-    fn open(ck: &KzgCommitterKey<E::G1Affine>, p: &Poly<E::ScalarField>, x: E::ScalarField) -> Self::Proof {
+    fn open(ck: &MonomialCK<E::G1Affine>, p: &Poly<E::ScalarField>, x: E::ScalarField) -> Self::Proof {
         let q = Self::compute_quotient(p, x);
         Self::commit(ck, &q).0
     }
@@ -179,7 +179,7 @@ mod tests {
 
     fn random_openings<R: Rng, E: Pairing>(
         k: usize,
-        ck: &KzgCommitterKey<E::G1Affine>,
+        ck: &MonomialCK<E::G1Affine>,
         xs: Vec<E::ScalarField>,
         rng: &mut R,
     ) -> Vec<KzgOpening<E>>

@@ -7,12 +7,12 @@ use ark_serialize::*;
 
 
 impl<E: Pairing> PcsParams for URS<E> {
-    type CK = KzgCommitterKey<E::G1Affine>;
+    type CK = MonomialCK<E::G1Affine>;
     type VK = KzgVerifierKey<E>;
     type RVK = RawKzgVerifierKey<E>;
 
-    fn ck(&self) -> KzgCommitterKey<E::G1Affine> {
-        KzgCommitterKey {
+    fn ck(&self) -> MonomialCK<E::G1Affine> {
+        MonomialCK {
             powers_in_g1: self.powers_in_g1.clone() //TODO: Cow?
         }
     }
@@ -37,12 +37,12 @@ impl<E: Pairing> PcsParams for URS<E> {
 
 /// Used to commit to and to open univariate polynomials of degree up to self.max_degree().
 #[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
-pub struct KzgCommitterKey<G: AffineRepr> {
+pub struct MonomialCK<G: AffineRepr> {
     // G1, tau.G1, tau^2.G1, ..., tau^n1.G1
     pub(crate) powers_in_g1: Vec<G>,
 }
 
-impl<G: AffineRepr> CommitterKey for KzgCommitterKey<G> {
+impl<G: AffineRepr> CommitterKey for MonomialCK<G> {
     fn max_degree(&self) -> usize {
         self.powers_in_g1.len() - 1
     }
@@ -93,9 +93,9 @@ pub struct KzgVerifierKey<E: Pairing> {
 
 impl<E: Pairing> VerifierKey for KzgVerifierKey<E> {}
 
-impl<E: Pairing> From<KzgVerifierKey<E>> for KzgCommitterKey<E::G1Affine> {
+impl<E: Pairing> From<KzgVerifierKey<E>> for MonomialCK<E::G1Affine> {
     fn from(vk: KzgVerifierKey<E>) -> Self {
-        KzgCommitterKey {
+        MonomialCK {
             powers_in_g1: vec![vk.g1]
         }
     }
