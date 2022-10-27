@@ -79,8 +79,8 @@ mod tests {
         let domain = GeneralEvaluationDomain::new(domain_size).unwrap();
 
         let (tau, g1, g2) = URS::<TestCurve>::random_params(rng);
-        let monomial_urs = URS::<TestCurve>::from_trapdoor(tau, domain_size, 0, g1, g2);
-        let monomial_ck = monomial_urs.ck();
+        let urs = URS::<TestCurve>::from_trapdoor(tau, domain_size, 0, g1, g2);
+        let monomial_ck = urs.ck().monomial;
         let lagrangian_ck_from_monomial_urs = monomial_ck.to_lagrangian(domain);
 
         let lagrangian_ck_from_trapdoor = LagrangianCK::<<TestCurve as Pairing>::G1Affine>::from_trapdoor(domain, tau, g1);
