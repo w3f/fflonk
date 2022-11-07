@@ -8,7 +8,7 @@ use ark_ec::pairing::Pairing;
 use ark_std::ops::Mul;
 use ark_std::marker::PhantomData;
 use crate::pcs::{PCS, CommitterKey};
-use crate::pcs::kzg::params::{KzgVerifierKey, KzgComitterKey};
+use crate::pcs::kzg::params::{KzgVerifierKey, KzgCommitterKey};
 use crate::Poly;
 use crate::pcs::kzg::commitment::KzgCommitment;
 use crate::pcs::kzg::urs::URS;
@@ -104,7 +104,7 @@ impl<E: Pairing> PCS<E::ScalarField> for KZG<E> {
     type C = KzgCommitment<E>;
     type Proof = E::G1Affine;
 
-    type CK = KzgComitterKey<E::G1Affine>;
+    type CK = KzgCommitterKey<E::G1Affine>;
     type VK = KzgVerifierKey<E>;
     type Params = URS<E>;
 
@@ -187,7 +187,7 @@ mod tests {
 
     fn random_openings<R: Rng, E: Pairing>(
         k: usize,
-        ck: &KzgComitterKey<E::G1Affine>,
+        ck: &KzgCommitterKey<E::G1Affine>,
         xs: Vec<E::ScalarField>,
         rng: &mut R,
     ) -> Vec<KzgOpening<E>>

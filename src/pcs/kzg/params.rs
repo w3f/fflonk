@@ -8,7 +8,7 @@ use ark_serialize::*;
 use crate::pcs::kzg::lagrange::LagrangianCK;
 
 impl<E: Pairing> PcsParams for URS<E> {
-    type CK = KzgComitterKey<E::G1Affine>;
+    type CK = KzgCommitterKey<E::G1Affine>;
     type VK = KzgVerifierKey<E>;
     type RVK = RawKzgVerifierKey<E>;
 
@@ -16,7 +16,7 @@ impl<E: Pairing> PcsParams for URS<E> {
         let monomial = MonomialCK {
             powers_in_g1: self.powers_in_g1.clone()
         };
-        KzgComitterKey { monomial, lagrangian: None }
+        KzgCommitterKey { monomial, lagrangian: None }
     }
 
     fn ck_with_lagrangian(&self, domain_size: usize) -> Self::CK {
@@ -27,7 +27,7 @@ impl<E: Pairing> PcsParams for URS<E> {
             powers_in_g1: self.powers_in_g1[0..domain_size].to_vec()
         };
         let lagrangian = Some(monomial.to_lagrangian(domain));
-        KzgComitterKey { monomial, lagrangian }
+        KzgCommitterKey { monomial, lagrangian }
     }
 
     fn vk(&self) -> Self::VK {
@@ -48,7 +48,7 @@ impl<E: Pairing> PcsParams for URS<E> {
 }
 
 #[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
-pub struct KzgComitterKey<G: AffineRepr> {
+pub struct KzgCommitterKey<G: AffineRepr> {
     pub(crate) monomial: MonomialCK<G>,
     pub(crate) lagrangian: Option<LagrangianCK<G>>,
 }
@@ -67,7 +67,7 @@ impl<G: AffineRepr> CommitterKey for MonomialCK<G> {
     }
 }
 
-impl<G: AffineRepr> CommitterKey for KzgComitterKey<G> {
+impl<G: AffineRepr> CommitterKey for KzgCommitterKey<G> {
     fn max_degree(&self) -> usize {
         self.monomial.max_degree()
     }
@@ -118,7 +118,7 @@ pub struct KzgVerifierKey<E: Pairing> {
 
 impl<E: Pairing> VerifierKey for KzgVerifierKey<E> {}
 
-impl<E: Pairing> From<KzgVerifierKey<E>> for KzgComitterKey<E::G1Affine> {
+impl<E: Pairing> From<KzgVerifierKey<E>> for KzgCommitterKey<E::G1Affine> {
     fn from(vk: KzgVerifierKey<E>) -> Self {
         let monomial = MonomialCK { powers_in_g1: vec![vk.g1] };
         Self { monomial, lagrangian: None }
