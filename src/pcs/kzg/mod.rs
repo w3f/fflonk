@@ -1,17 +1,18 @@
 pub mod urs;
 pub mod params;
 mod commitment;
+mod lagrange;
 
 use ark_ec::CurveGroup;
 use ark_ec::pairing::Pairing;
 use ark_std::ops::Mul;
 use ark_std::marker::PhantomData;
 use crate::pcs::{PCS, CommitterKey};
-use crate::pcs::kzg::params::{MonomialCK, KzgVerifierKey};
+use crate::pcs::kzg::params::{KzgVerifierKey, KzgComitterKey};
 use crate::Poly;
 use crate::pcs::kzg::commitment::KzgCommitment;
 use crate::pcs::kzg::urs::URS;
-use ark_poly::{Polynomial, DenseUVPolynomial};
+use ark_poly::{Polynomial, DenseUVPolynomial, Evaluations};
 use ark_ec::VariableBaseMSM;
 use ark_ff::{One, UniformRand, Zero};
 
@@ -92,13 +93,18 @@ impl<E: Pairing> KZG<E> {
         let acc_opening = Self::accumulate(openings, &coeffs, vk);
         Self::verify_accumulated(acc_opening, vk)
     }
+
+    fn _commit(coeffs: &[E::ScalarField], bases: &[E::G1Affine]) -> KzgCommitment<E> {
+        let proj: E::G1 = VariableBaseMSM::msm(bases, coeffs);
+        KzgCommitment(proj.into_affine())
+    }
 }
 
 impl<E: Pairing> PCS<E::ScalarField> for KZG<E> {
     type C = KzgCommitment<E>;
     type Proof = E::G1Affine;
 
-    type CK = MonomialCK<E::G1Affine>;
+    type CK = KzgComitterKey<E::G1Affine>;
     type VK = KzgVerifierKey<E>;
     type Params = URS<E>;
 
@@ -106,18 +112,20 @@ impl<E: Pairing> PCS<E::ScalarField> for KZG<E> {
         URS::<E>::generate(max_degree + 1, 2, rng)
     }
 
-    fn commit(ck: &MonomialCK<E::G1Affine>, p: &Poly<E::ScalarField>) -> Self::C {
-        assert!(p.degree() <= ck.max_degree(), "Can't commit to degree {} polynomial using {} bases", p.degree(), ck.powers_in_g1.len());
-
-        let commitment: E::G1 = VariableBaseMSM::msm(
-            &ck.powers_in_g1,
-            &p.coeffs,
-        );
-
-        KzgCommitment(commitment.into())
+    fn commit(ck: &Self::CK, p: &Poly<E::ScalarField>) -> Self::C {
+        let ck = &ck.monomial;
+        assert!(p.degree() <= ck.max_degree(), "Can't commit to degree {} polynomial using {} bases", p.degree(), ck.max_evals());
+        Self::_commit(&p.coeffs, &ck.powers_in_g1)
     }
 
-    fn open(ck: &MonomialCK<E::G1Affine>, p: &Poly<E::ScalarField>, x: E::ScalarField) -> Self::Proof {
+    fn commit_evals(ck: &Self::CK, evals: &Evaluations<E::ScalarField>) -> Self::C {
+        let ck = ck.lagrangian.as_ref().expect("lagrangian key hadn't been generated");
+        assert_eq!(evals.domain(), ck.domain);
+        assert!(evals.evals.len() <= ck.max_evals(), "Can't commit to {} values using {} bases", evals.evals.len(), ck.max_evals());
+        Self::_commit(&evals.evals, &ck.lis_in_g)
+    }
+
+    fn open(ck: &Self::CK, p: &Poly<E::ScalarField>, x: E::ScalarField) -> Self::Proof {
         let q = Self::compute_quotient(p, x);
         Self::commit(ck, &q).0
     }
@@ -142,11 +150,11 @@ mod tests {
     use super::*;
     use ark_std::test_rng;
     use crate::pcs::PcsParams;
-    use ark_poly::DenseUVPolynomial;
+    use ark_poly::{DenseUVPolynomial, EvaluationDomain, GeneralEvaluationDomain};
     use ark_ff::UniformRand;
 
     use ark_std::{end_timer, start_timer};
-    use crate::tests::{BenchCurve, TestCurve};
+    use crate::tests::{BenchCurve, TestCurve, TestField};
 
     fn _test_minimal_kzg<E: Pairing>(log_n: usize) {
         let rng = &mut test_rng();
@@ -179,7 +187,7 @@ mod tests {
 
     fn random_openings<R: Rng, E: Pairing>(
         k: usize,
-        ck: &MonomialCK<E::G1Affine>,
+        ck: &KzgComitterKey<E::G1Affine>,
         xs: Vec<E::ScalarField>,
         rng: &mut R,
     ) -> Vec<KzgOpening<E>>
@@ -238,5 +246,29 @@ mod tests {
     #[ignore]
     fn bench_batch_verification() {
         _test_batch_verification::<BenchCurve>(12, 5);
+    }
+
+    #[test]
+    fn test_commitments_match() {
+        let rng = &mut test_rng();
+        let domain_size = 16;
+        let domain = GeneralEvaluationDomain::new(domain_size).unwrap();
+
+        let urs = KZG::<TestCurve>::setup(domain_size - 1, rng);
+        let ck = urs.ck_with_lagrangian(domain_size);
+
+        let mut evals = vec![TestField::zero(); domain_size];
+        evals[0] = TestField::one();
+        let evals = Evaluations::from_vec_and_domain(evals, domain);
+        let t_commit = start_timer!(|| format!("Committing to a sparse vec using lagrangian SRS"));
+        let c_evals = KZG::<TestCurve>::commit_evals(&ck, &evals);
+        end_timer!(t_commit);
+
+        let poly = evals.interpolate();
+        let t_commit = start_timer!(|| format!("Committing to a sparse vec using monomial SRS"));
+        let c_poly = KZG::<TestCurve>::commit(&ck, &poly);
+        end_timer!(t_commit);
+
+        assert_eq!(c_evals, c_poly);
     }
 }

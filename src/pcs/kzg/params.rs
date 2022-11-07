@@ -1,23 +1,36 @@
 use ark_ec::AffineRepr;
 use ark_ec::pairing::Pairing;
+use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use crate::pcs::{PcsParams, CommitterKey, VerifierKey, RawVerifierKey};
 use crate::pcs::kzg::urs::URS;
 
 use ark_serialize::*;
-
+use crate::pcs::kzg::lagrange::LagrangianCK;
 
 impl<E: Pairing> PcsParams for URS<E> {
-    type CK = MonomialCK<E::G1Affine>;
+    type CK = KzgComitterKey<E::G1Affine>;
     type VK = KzgVerifierKey<E>;
     type RVK = RawKzgVerifierKey<E>;
 
-    fn ck(&self) -> MonomialCK<E::G1Affine> {
-        MonomialCK {
-            powers_in_g1: self.powers_in_g1.clone() //TODO: Cow?
-        }
+    fn ck(&self) -> Self::CK {
+        let monomial = MonomialCK {
+            powers_in_g1: self.powers_in_g1.clone()
+        };
+        KzgComitterKey { monomial, lagrangian: None }
     }
 
-    fn vk(&self) -> KzgVerifierKey<E> {
+    fn ck_with_lagrangian(&self, domain_size: usize) -> Self::CK {
+        let domain = GeneralEvaluationDomain::new(domain_size).unwrap();
+        assert_eq!(domain.size(), domain_size, "domains of size {} are not supported", domain_size);
+        assert!(domain_size <= self.powers_in_g1.len());
+        let monomial = MonomialCK {
+            powers_in_g1: self.powers_in_g1[0..domain_size].to_vec()
+        };
+        let lagrangian = Some(monomial.to_lagrangian(domain));
+        KzgComitterKey { monomial, lagrangian }
+    }
+
+    fn vk(&self) -> Self::VK {
         self.raw_vk().prepare()
     }
 
@@ -34,6 +47,12 @@ impl<E: Pairing> PcsParams for URS<E> {
     }
 }
 
+#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
+pub struct KzgComitterKey<G: AffineRepr> {
+    pub(crate) monomial: MonomialCK<G>,
+    pub(crate) lagrangian: Option<LagrangianCK<G>>,
+}
+
 
 /// Used to commit to and to open univariate polynomials of degree up to self.max_degree().
 #[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
@@ -45,6 +64,12 @@ pub struct MonomialCK<G: AffineRepr> {
 impl<G: AffineRepr> CommitterKey for MonomialCK<G> {
     fn max_degree(&self) -> usize {
         self.powers_in_g1.len() - 1
+    }
+}
+
+impl<G: AffineRepr> CommitterKey for KzgComitterKey<G> {
+    fn max_degree(&self) -> usize {
+        self.monomial.max_degree()
     }
 }
 
@@ -93,11 +118,10 @@ pub struct KzgVerifierKey<E: Pairing> {
 
 impl<E: Pairing> VerifierKey for KzgVerifierKey<E> {}
 
-impl<E: Pairing> From<KzgVerifierKey<E>> for MonomialCK<E::G1Affine> {
+impl<E: Pairing> From<KzgVerifierKey<E>> for KzgComitterKey<E::G1Affine> {
     fn from(vk: KzgVerifierKey<E>) -> Self {
-        MonomialCK {
-            powers_in_g1: vec![vk.g1]
-        }
+        let monomial = MonomialCK { powers_in_g1: vec![vk.g1] };
+        Self { monomial, lagrangian: None }
     }
 }
 

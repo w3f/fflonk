@@ -1,4 +1,5 @@
 use ark_ff::PrimeField;
+use ark_poly::Evaluations;
 use ark_serialize::*;
 use ark_std::fmt::Debug;
 use ark_std::iter::Sum;
@@ -62,9 +63,13 @@ pub trait PcsParams {
     type VK: VerifierKey;
     type RVK: RawVerifierKey<VK=Self::VK>;
 
-    fn ck(&self) -> Self::CK; //TODO: trim
+    fn ck(&self) -> Self::CK;
     fn vk(&self) -> Self::VK;
     fn raw_vk(&self) -> Self::RVK;
+
+    fn ck_with_lagrangian(&self, _domain_size: usize) -> Self::CK {
+        unimplemented!();
+    }
 }
 
 
@@ -75,12 +80,20 @@ pub trait PCS<F: PrimeField> {
     type Proof: Clone + CanonicalSerialize + CanonicalDeserialize;
 
     type CK: CommitterKey;
+
+    // vk needs to be convertible to a ck that is only required to commit to the p=1 constant polynomial,
+    // see https://eprint.iacr.org/archive/2020/1536/1629188090.pdf, section 4.2
     type VK: VerifierKey + Into<Self::CK>;
     type Params: PcsParams<CK=Self::CK, VK=Self::VK>;
 
     fn setup<R: Rng>(max_degree: usize, rng: &mut R) -> Self::Params;
 
     fn commit(ck: &Self::CK, p: &Poly<F>) -> Self::C;
+
+    fn commit_evals(ck: &Self::CK, evals: &Evaluations<F>) -> Self::C {
+        let poly = evals.interpolate_by_ref();
+        Self::commit(ck, &poly)
+    }
 
     fn open(ck: &Self::CK, p: &Poly<F>, x: F) -> Self::Proof; //TODO: eval?
 
