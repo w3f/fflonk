@@ -95,7 +95,7 @@ impl<E: Pairing> KZG<E> {
     }
 
     fn _commit(coeffs: &[E::ScalarField], bases: &[E::G1Affine]) -> KzgCommitment<E> {
-        let proj: E::G1 = VariableBaseMSM::msm(bases, coeffs);
+        let proj: E::G1 = VariableBaseMSM::msm_unchecked(bases, coeffs);
         KzgCommitment(proj.into_affine())
     }
 }
@@ -152,6 +152,9 @@ mod tests {
     use crate::pcs::PcsParams;
     use ark_poly::{DenseUVPolynomial, EvaluationDomain, GeneralEvaluationDomain};
     use ark_ff::UniformRand;
+
+    #[cfg(feature = "print-trace")]
+    use ark_ff::PrimeField;
 
     use ark_std::{end_timer, start_timer};
     use crate::tests::{BenchCurve, TestCurve, TestField};
