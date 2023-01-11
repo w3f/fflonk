@@ -43,18 +43,18 @@ impl<E: Pairing> URS<E> {
         // Until ECFFT for more curves is implemented, see https://github.com/wborgeaud/ecfft-bn254
         assert!(n <= 1 << E::ScalarField::TWO_ADICITY, "number of bases exceeds curve 2-adicity");
 
-        let t_powers = start_timer!(|| format!("Computing {} scalars powers", n));
+        // let t_powers = start_timer!(|| format!("Computing {} scalars powers", n));
         // tau^0, ..., tau^(n-1))
         let powers_of_tau: Vec<E::ScalarField> = utils::powers(tau).take(n).collect();
-        end_timer!(t_powers);
+        // end_timer!(t_powers);
 
-        let t_msm_g1 = start_timer!(|| format!("{}-scalar mul in G1", n1));
+        // let t_msm_g1 = start_timer!(|| format!("{}-scalar mul in G1", n1));
         let powers_in_g1 = single_base_msm(&powers_of_tau[..n1], g1);
-        end_timer!(t_msm_g1);
+        // end_timer!(t_msm_g1);
 
-        let t_msm_g2 = start_timer!(|| format!("{}-scalar mul in G1", n2));
+        // let t_msm_g2 = start_timer!(|| format!("{}-scalar mul in G1", n2));
         let powers_in_g2 = single_base_msm(&powers_of_tau[..n2], g2);
-        end_timer!(t_msm_g2);
+        // end_timer!(t_msm_g2);
 
         URS {
             powers_in_g1,
