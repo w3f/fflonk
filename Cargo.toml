@@ -5,19 +5,19 @@ edition = "2021"
 authors = ["Sergey Vasilyev <swasilyev@gmail.com>"]
 
 [dependencies]
-ark-std = { version = "0.4.0-alpha", default-features = false }
-ark-ff = { version = "0.4.0-alpha", default-features = false }
-ark-ec = { version = "0.4.0-alpha", default-features = false }
-ark-poly = { version = "0.4.0-alpha", default-features = false }
-ark-serialize = { version = "0.4.0-alpha", default-features = false, features = ["derive"] }
+ark-std = { version = "0.4", default-features = false }
+ark-ff = { version = "0.4", default-features = false }
+ark-ec = { version = "0.4", default-features = false }
+ark-poly = { version = "0.4", default-features = false }
+ark-serialize = { version = "0.4", default-features = false, features = ["derive"] }
 
 rayon = { version = "1", optional = true }
 merlin = "3.0"
 
 [dev-dependencies]
 criterion = "0.3"
-ark-bw6-761 = { version = "0.4.0-alpha.2", default-features = false }
-ark-bls12-381 = { version = "0.4.0-alpha.2", default-features = false, features = ["curve"] }
+ark-bw6-761 = { version = "0.4", default-features = false }
+ark-bls12-381 = { version = "0.4", default-features = false, features = ["curve"] }
 
 [[bench]]
 name = "primitives"
@@ -34,5 +34,5 @@ harness = true
 [features]
 default = []
 std = ["ark-std/std", "ark-ff/std", "ark-ec/std", "ark-poly/std", "ark-serialize/std"]
-parallel = ["std", "ark-std/parallel", "ark-ff/parallel", "ark-ec/parallel", "ark-poly/parallel", "rayon"]
+parallel = ["std", "rayon", "ark-std/parallel", "ark-ff/parallel", "ark-ec/parallel", "ark-poly/parallel"]
 print-trace = ["ark-std/print-trace"]
