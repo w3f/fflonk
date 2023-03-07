@@ -64,13 +64,14 @@ impl<G: AffineRepr> MonomialCK<G> {
 #[cfg(test)]
 mod tests {
     use ark_ec::pairing::Pairing;
-    use super::*;
     use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
     use ark_std::test_rng;
 
     use crate::pcs::kzg::urs::URS;
     use crate::pcs::PcsParams;
     use crate::tests::TestCurve;
+
+    use super::*;
 
     #[test]
     fn test_derivation_from_monomial_urs() {

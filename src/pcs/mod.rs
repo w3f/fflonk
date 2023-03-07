@@ -6,12 +6,12 @@ use ark_std::iter::Sum;
 use ark_std::ops::{Add, Sub};
 use ark_std::rand::Rng;
 
+pub use id::IdentityCommitment;
+
 use crate::Poly;
 
 pub mod kzg;
 mod id;
-
-pub use id::IdentityCommitment;
 
 pub trait Commitment<F: PrimeField>:
 Eq

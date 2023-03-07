@@ -1,11 +1,11 @@
 use ark_ec::AffineRepr;
 use ark_ec::pairing::Pairing;
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
-use crate::pcs::{PcsParams, CommitterKey, VerifierKey, RawVerifierKey};
-use crate::pcs::kzg::urs::URS;
-
 use ark_serialize::*;
+
+use crate::pcs::{CommitterKey, PcsParams, RawVerifierKey, VerifierKey};
 use crate::pcs::kzg::lagrange::LagrangianCK;
+use crate::pcs::kzg::urs::URS;
 
 impl<E: Pairing> PcsParams for URS<E> {
     type CK = KzgCommitterKey<E::G1Affine>;

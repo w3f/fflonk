@@ -1,11 +1,10 @@
 use ark_ff::Zero;
 use ark_poly::Polynomial;
-
-use crate::Poly;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
 use crate::pcs::*;
+use crate::Poly;
 use crate::utils::poly;
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
 #[derive(Clone, PartialEq, Eq, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct WrappedPolynomial<F: PrimeField>(pub Poly<F>);

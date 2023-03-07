@@ -1,17 +1,19 @@
+use std::marker::PhantomData;
+
 use ark_ff::{PrimeField, UniformRand, Zero};
 use ark_poly::Polynomial;
-use ark_std::test_rng;
-use fflonk::{Poly, FflonkyKzg};
-use crate::{VanillaPlonkAssignments, DecoyPlonk};
-use fflonk::pcs::PCS;
-use ark_std::rand::Rng;
-use fflonk::fflonk::Fflonk;
+use ark_serialize::*;
 use ark_std::{end_timer, start_timer};
+use ark_std::rand::Rng;
+use ark_std::test_rng;
+
+use fflonk::{FflonkyKzg, Poly};
+use fflonk::fflonk::Fflonk;
+use fflonk::pcs::PCS;
 use fflonk::pcs::PcsParams;
 use fflonk::shplonk::AggregateProof;
-use std::marker::PhantomData;
-use ark_serialize::*;
 
+use crate::{DecoyPlonk, VanillaPlonkAssignments};
 
 impl<F: PrimeField> VanillaPlonkAssignments<F> {
     fn combinations(&self) -> Vec<Combination<F>> {

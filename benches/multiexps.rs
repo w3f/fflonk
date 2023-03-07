@@ -1,12 +1,10 @@
-use criterion::{criterion_group, criterion_main, Criterion, BenchmarkId};
-
-use ark_ff::{UniformRand, PrimeField};
 use ark_ec::pairing::Pairing;
+use ark_ec::VariableBaseMSM;
+use ark_ff::{PrimeField, UniformRand};
 use ark_std::test_rng;
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 
 use fflonk::utils::ec;
-use ark_ec::VariableBaseMSM;
-
 
 fn small_multiexp_affine<E: Pairing>(c: &mut Criterion) {
     let rng = &mut test_rng();

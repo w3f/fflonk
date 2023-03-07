@@ -1,8 +1,8 @@
 use ark_ff::PrimeField;
-use crate::aggregation::multiple::Transcript;
-use crate::pcs::PCS;
 use ark_serialize::{CanonicalSerialize, Compress};
 
+use crate::aggregation::multiple::Transcript;
+use crate::pcs::PCS;
 
 impl<F: PrimeField, CS: PCS<F>> Transcript<F, CS> for merlin::Transcript {
     fn get_gamma(&mut self) -> F {

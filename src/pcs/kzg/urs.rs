@@ -1,14 +1,11 @@
 use ark_ec::pairing::Pairing;
+use ark_ff::{FftField, UniformRand};
+use ark_serialize::*;
+use ark_std::{end_timer, start_timer};
 use ark_std::rand::RngCore;
-use ark_ff::{UniformRand, FftField};
+
 use crate::utils;
 use crate::utils::ec::single_base_msm;
-
-use ark_serialize::*;
-
-use ark_std::{end_timer, start_timer};
-
-
 
 /// Updatable Universal References String
 #[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
@@ -66,9 +63,11 @@ impl<E: Pairing> URS<E> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use ark_std::test_rng;
+
     use crate::tests::{BenchCurve, TestCurve};
+
+    use super::*;
 
     fn _test_urs_generation<E: Pairing>(log_n1: usize, log_n2: usize) {
         let n1 = 1 << log_n1;

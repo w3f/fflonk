@@ -1,12 +1,11 @@
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ec::pairing::Pairing;
-use crate::pcs::Commitment;
-use ark_std::ops::{Add, Mul, Sub};
-use ark_std::iter::Sum;
-
 use ark_serialize::*;
-use crate::utils::ec::{small_multiexp_affine};
+use ark_std::iter::Sum;
+use ark_std::ops::{Add, Mul, Sub};
 
+use crate::pcs::Commitment;
+use crate::utils::ec::small_multiexp_affine;
 
 /// KZG commitment to G1 represented in affine coordinates.
 #[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]

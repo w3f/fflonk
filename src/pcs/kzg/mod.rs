@@ -1,23 +1,23 @@
+use ark_ec::CurveGroup;
+use ark_ec::pairing::Pairing;
+use ark_ec::VariableBaseMSM;
+use ark_ff::{One, UniformRand, Zero};
+use ark_poly::{DenseUVPolynomial, Evaluations, Polynomial};
+use ark_std::marker::PhantomData;
+use ark_std::ops::Mul;
+use ark_std::rand::Rng;
+
+use crate::pcs::{CommitterKey, PCS};
+use crate::pcs::kzg::commitment::KzgCommitment;
+use crate::pcs::kzg::params::{KzgCommitterKey, KzgVerifierKey};
+use crate::pcs::kzg::urs::URS;
+use crate::Poly;
+use crate::utils::ec::{small_multiexp_affine, small_multiexp_proj};
+
 pub mod urs;
 pub mod params;
 mod commitment;
 mod lagrange;
-
-use ark_ec::CurveGroup;
-use ark_ec::pairing::Pairing;
-use ark_std::ops::Mul;
-use ark_std::marker::PhantomData;
-use crate::pcs::{PCS, CommitterKey};
-use crate::pcs::kzg::params::{KzgVerifierKey, KzgCommitterKey};
-use crate::Poly;
-use crate::pcs::kzg::commitment::KzgCommitment;
-use crate::pcs::kzg::urs::URS;
-use ark_poly::{Polynomial, DenseUVPolynomial, Evaluations};
-use ark_ec::VariableBaseMSM;
-use ark_ff::{One, UniformRand, Zero};
-
-use ark_std::rand::Rng;
-use crate::utils::ec::{small_multiexp_proj, small_multiexp_affine};
 
 pub struct KZG<E: Pairing> {
     _engine: PhantomData<E>,
@@ -147,17 +147,17 @@ impl<E: Pairing> PCS<E::ScalarField> for KZG<E> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use ark_std::test_rng;
-    use crate::pcs::PcsParams;
-    use ark_poly::{DenseUVPolynomial, EvaluationDomain, GeneralEvaluationDomain};
-    use ark_ff::UniformRand;
-
     #[cfg(feature = "print-trace")]
     use ark_ff::PrimeField;
-
+    use ark_ff::UniformRand;
+    use ark_poly::{DenseUVPolynomial, EvaluationDomain, GeneralEvaluationDomain};
     use ark_std::{end_timer, start_timer};
+    use ark_std::test_rng;
+
+    use crate::pcs::PcsParams;
     use crate::tests::{BenchCurve, TestCurve, TestField};
+
+    use super::*;
 
     fn _test_minimal_kzg<E: Pairing>(log_n: usize) {
         let rng = &mut test_rng();

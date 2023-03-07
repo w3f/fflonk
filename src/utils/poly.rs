@@ -1,10 +1,9 @@
 use ark_ff::{FftField, Field, PrimeField, Zero};
-use ark_poly::{Polynomial, DenseUVPolynomial};
+use ark_poly::{DenseUVPolynomial, Polynomial};
 use ark_poly::polynomial::univariate::DensePolynomial;
 
 use crate::Poly;
 use crate::utils::powers;
-
 
 /// Field element represented as a constant polynomial.
 pub(crate) fn constant<F: PrimeField>(c: F) -> Poly<F> {

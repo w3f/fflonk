@@ -4,10 +4,11 @@
 
 use ark_ff::FftField;
 use ark_poly::DenseUVPolynomial;
+use ark_std::convert::TryInto;
 use ark_std::marker::PhantomData;
 use ark_std::ops::Div;
+
 use crate::utils;
-use ark_std::convert::TryInto;
 
 pub struct Fflonk<F: FftField, P: DenseUVPolynomial<F>> {
     _field: PhantomData<F>,
@@ -111,12 +112,12 @@ impl<F: FftField, P: DenseUVPolynomial<F>> Fflonk<F, P>
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use ark_std::{test_rng, UniformRand, Zero};
-
     use ark_ff::Field;
     use ark_poly::Polynomial;
-    use ark_poly::univariate::{DensePolynomial, DenseOrSparsePolynomial};
+    use ark_poly::univariate::{DenseOrSparsePolynomial, DensePolynomial};
+    use ark_std::{test_rng, UniformRand, Zero};
+
+    use super::*;
 
     type F = ark_bw6_761::Fr;
     type P = DensePolynomial<F>;

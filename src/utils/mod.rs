@@ -1,11 +1,8 @@
+use ark_ec::pairing::Pairing;
+use ark_ff::Field;
+
 pub mod ec;
 pub mod poly;
-
-
-
-use ark_ff::Field;
-use ark_ec::pairing::Pairing;
-
 
 
 pub fn powers<F: Field>(base: F) -> impl Iterator<Item=F> {

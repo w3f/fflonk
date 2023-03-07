@@ -1,9 +1,10 @@
+use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{PrimeField, Zero};
+use ark_poly::Polynomial;
+
 use crate::pcs::{Commitment, PCS};
 use crate::Poly;
-use ark_poly::Polynomial;
 use crate::utils::ec::small_multiexp_affine;
-use ark_ec::{AffineRepr, CurveGroup};
 
 /// A tuple (c, x, y) of the form (G, F, F). Represents a claim that {f(x) = y, for a polynomial f such that commit(f) = c}.
 /// In other words, it is am instance in some language of "correct polynomial evaluations".
@@ -81,14 +82,14 @@ pub fn aggregate_polys<F: PrimeField>(polys: &[Poly<F>], rs: &[F]) -> Poly<F> {
 
 #[cfg(test)]
 mod tests {
+    use ark_poly::DenseUVPolynomial;
     use ark_std::test_rng;
 
-    use super::*;
-    use ark_poly::DenseUVPolynomial;
-    use crate::pcs::PcsParams;
     use crate::pcs::IdentityCommitment;
-    use crate::tests::{TestKzg, TestField};
+    use crate::pcs::PcsParams;
+    use crate::tests::{TestField, TestKzg};
 
+    use super::*;
 
     fn _test_aggregation<F: PrimeField, CS: PCS<F>>() {
         let rng = &mut test_rng();

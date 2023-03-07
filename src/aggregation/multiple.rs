@@ -2,8 +2,8 @@ use std::collections::HashSet;
 
 use ark_ff::PrimeField;
 use ark_poly::Polynomial;
-use ark_std::iterable::Iterable;
 use ark_std::{end_timer, start_timer};
+use ark_std::iterable::Iterable;
 
 use crate::{EuclideanPolynomial, Poly, utils};
 use crate::pcs::{Commitment, PCS};
@@ -164,17 +164,17 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS>>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use ark_ff::{One, UniformRand};
+    use ark_std::{end_timer, start_timer};
     use ark_std::iter::FromIterator;
     use ark_std::test_rng;
-    use ark_std::{end_timer, start_timer};
 
-    use crate::pcs::PcsParams;
     use crate::pcs::IdentityCommitment;
+    use crate::pcs::PcsParams;
     use crate::shplonk::tests::{random_opening, random_xss};
-    use crate::tests::{TestField, TestKzg, BenchField, BenchKzg, BENCH_DEG_LOG1};
+    use crate::tests::{BENCH_DEG_LOG1, BenchField, BenchKzg, TestField, TestKzg};
+
+    use super::*;
 
     #[test]
     fn test_get_coeffs() {

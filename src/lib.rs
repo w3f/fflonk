@@ -8,7 +8,7 @@ use aggregation::multiple::Transcript;
 
 use crate::fflonk::Fflonk;
 use crate::pcs::PCS;
-use crate::shplonk::{Shplonk, AggregateProof};
+use crate::shplonk::{AggregateProof, Shplonk};
 
 pub mod shplonk;
 pub mod fflonk;
@@ -117,16 +117,16 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
 
 #[cfg(test)]
 mod tests {
-    use ark_poly::{Polynomial, DenseUVPolynomial};
+    use ark_ec::pairing::Pairing;
+    use ark_poly::{DenseUVPolynomial, Polynomial};
     use ark_std::rand::Rng;
     use ark_std::test_rng;
 
+    use crate::pcs::IdentityCommitment;
     use crate::pcs::kzg::KZG;
     use crate::pcs::PcsParams;
-    use crate::pcs::IdentityCommitment;
 
     use super::*;
-    use ark_ec::pairing::Pairing;
 
     pub(crate) type TestCurve = ark_bls12_381::Bls12_381;
     pub(crate) type TestField = <TestCurve as Pairing>::ScalarField;

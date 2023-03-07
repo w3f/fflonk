@@ -2,13 +2,12 @@ use std::collections::HashSet;
 use std::marker::PhantomData;
 
 use ark_ff::PrimeField;
-use ark_poly::{Polynomial, DenseUVPolynomial};
+use ark_poly::{DenseUVPolynomial, Polynomial};
+use ark_serialize::*;
 
-use crate::aggregation::multiple::{aggregate_claims, aggregate_polys, Transcript, group_by_commitment};
+use crate::aggregation::multiple::{aggregate_claims, aggregate_polys, group_by_commitment, Transcript};
 use crate::pcs::PCS;
 use crate::Poly;
-
-use ark_serialize::*;
 
 pub struct Shplonk<F: PrimeField, CS: PCS<F>> {
     _field: PhantomData<F>,
@@ -59,12 +58,12 @@ pub(crate) mod tests {
     use ark_std::rand::Rng;
     use ark_std::test_rng;
 
-    use crate::pcs::{PcsParams, Commitment};
+    use crate::pcs::{Commitment, PcsParams};
     use crate::pcs::IdentityCommitment;
     use crate::Poly;
+    use crate::tests::{TestField, TestKzg};
 
     use super::*;
-    use crate::tests::{TestField, TestKzg};
 
     pub struct TestOpening<F: PrimeField, C: Commitment<F>> {
         pub fs: Vec<Poly<F>>,

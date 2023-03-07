@@ -1,21 +1,22 @@
-mod fflonky;
-mod batchy;
-
-
-use fflonk::Poly;
-use ark_std::test_rng;
-use ark_poly::DenseUVPolynomial;
-use ark_std::rand::Rng;
-use ark_ff::PrimeField;
-use ark_poly::EvaluationDomain;
-use ark_std::{end_timer, start_timer};
-use ark_poly::Radix2EvaluationDomain;
 use ark_bls12_381::Bls12_381;
-use fflonk::pcs::PCS;
-use ark_serialize::{CanonicalSerialize, CanonicalDeserialize, Compress};
+use ark_ff::PrimeField;
+use ark_poly::DenseUVPolynomial;
+use ark_poly::EvaluationDomain;
+use ark_poly::Radix2EvaluationDomain;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Compress};
+use ark_std::{end_timer, start_timer};
+use ark_std::rand::Rng;
+use ark_std::test_rng;
+
 use fflonk::pcs::kzg::KZG;
+use fflonk::pcs::PCS;
+use fflonk::Poly;
+
 use crate::batchy::PlonkBatchKzgTest;
 use crate::fflonky::PlonkWithFflonkTest;
+
+mod fflonky;
+mod batchy;
 
 
 struct VanillaPlonkAssignments<F: PrimeField> {

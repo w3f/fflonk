@@ -1,14 +1,16 @@
 use std::marker::PhantomData;
-use ark_ff::{PrimeField, UniformRand};
-use fflonk::pcs::{PCS, PcsParams, Commitment};
-use crate::{DecoyPlonk, VanillaPlonkAssignments};
-use fflonk::Poly;
-use ark_poly::{Polynomial, DenseUVPolynomial};
-use ark_std::rand::Rng;
-use ark_std::{end_timer, start_timer, test_rng};
-use fflonk::utils::poly;
-use ark_serialize::*;
 
+use ark_ff::{PrimeField, UniformRand};
+use ark_poly::{DenseUVPolynomial, Polynomial};
+use ark_serialize::*;
+use ark_std::{end_timer, start_timer, test_rng};
+use ark_std::rand::Rng;
+
+use fflonk::pcs::{Commitment, PCS, PcsParams};
+use fflonk::Poly;
+use fflonk::utils::poly;
+
+use crate::{DecoyPlonk, VanillaPlonkAssignments};
 
 impl<F: PrimeField> VanillaPlonkAssignments<F> {
     fn constraints(&self) -> Vec<Poly<F>> {
