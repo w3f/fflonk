@@ -19,6 +19,7 @@ pub mod params;
 mod commitment;
 mod lagrange;
 
+#[derive(Clone)]
 pub struct KZG<E: Pairing> {
     _engine: PhantomData<E>,
 }
