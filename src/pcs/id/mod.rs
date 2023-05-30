@@ -94,6 +94,7 @@ impl PcsParams for () {
 }
 
 
+#[derive(Clone)]
 pub struct IdentityCommitment {}
 
 impl<F: PrimeField> PCS<F> for IdentityCommitment {
