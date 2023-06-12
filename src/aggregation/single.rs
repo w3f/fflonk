@@ -1,6 +1,7 @@
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{PrimeField, Zero};
 use ark_poly::Polynomial;
+use ark_std::vec::Vec;
 
 use crate::pcs::{Commitment, PCS};
 use crate::Poly;

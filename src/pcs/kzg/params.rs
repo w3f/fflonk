@@ -2,6 +2,7 @@ use ark_ec::AffineRepr;
 use ark_ec::pairing::Pairing;
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use ark_serialize::*;
+use ark_std::{vec, vec::Vec};
 
 use crate::pcs::{CommitterKey, PcsParams, RawVerifierKey, VerifierKey};
 use crate::pcs::kzg::lagrange::LagrangianCK;

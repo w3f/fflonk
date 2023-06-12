@@ -6,6 +6,7 @@ use ark_poly::{DenseUVPolynomial, Evaluations, Polynomial};
 use ark_std::marker::PhantomData;
 use ark_std::ops::Mul;
 use ark_std::rand::Rng;
+use ark_std::vec::Vec;
 
 use crate::pcs::{CommitterKey, PCS};
 use crate::pcs::kzg::commitment::KzgCommitment;
@@ -89,7 +90,7 @@ impl<E: Pairing> KZG<E> {
     }
 
     pub fn verify_batch<R: Rng>(openings: Vec<KzgOpening<E>>, vk: &KzgVerifierKey<E>, rng: &mut R) -> bool {
-        let one = std::iter::once(E::ScalarField::one());
+        let one = ark_std::iter::once(E::ScalarField::one());
         let coeffs: Vec<E::ScalarField> = one.chain((1..openings.len()).map(|_| u128::rand(rng).into())).collect();
         let acc_opening = Self::accumulate(openings, &coeffs, vk);
         Self::verify_accumulated(acc_opening, vk)
@@ -154,6 +155,7 @@ mod tests {
     use ark_poly::{DenseUVPolynomial, EvaluationDomain, GeneralEvaluationDomain};
     use ark_std::{end_timer, start_timer};
     use ark_std::test_rng;
+    use ark_std::vec;
 
     use crate::pcs::PcsParams;
     use crate::tests::{BenchCurve, TestCurve, TestField};

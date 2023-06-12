@@ -1,6 +1,7 @@
 use ark_ff::{FftField, Field, PrimeField, Zero};
 use ark_poly::{DenseUVPolynomial, Polynomial};
 use ark_poly::polynomial::univariate::DensePolynomial;
+use ark_std::{vec, vec::Vec};
 
 use crate::Poly;
 use crate::utils::powers;
