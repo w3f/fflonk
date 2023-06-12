@@ -5,6 +5,7 @@ use ark_std::fmt::Debug;
 use ark_std::iter::Sum;
 use ark_std::ops::{Add, Sub};
 use ark_std::rand::Rng;
+use ark_std::vec::Vec;
 
 pub use id::IdentityCommitment;
 

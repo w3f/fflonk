@@ -1,6 +1,7 @@
 use ark_ff::Zero;
 use ark_poly::Polynomial;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use ark_std::vec::Vec;
 
 use crate::pcs::*;
 use crate::Poly;

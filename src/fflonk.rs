@@ -7,6 +7,7 @@ use ark_poly::DenseUVPolynomial;
 use ark_std::convert::TryInto;
 use ark_std::marker::PhantomData;
 use ark_std::ops::Div;
+use ark_std::{vec, vec::Vec};
 
 use crate::utils;
 

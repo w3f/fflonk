@@ -4,6 +4,7 @@ use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::RngCore;
 use ark_std::UniformRand;
+use ark_std::vec::Vec;
 
 use crate::pcs::CommitterKey;
 use crate::pcs::kzg::params::MonomialCK;

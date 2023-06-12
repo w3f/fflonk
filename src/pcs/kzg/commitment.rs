@@ -3,6 +3,7 @@ use ark_ec::pairing::Pairing;
 use ark_serialize::*;
 use ark_std::iter::Sum;
 use ark_std::ops::{Add, Mul, Sub};
+use ark_std::vec::Vec;
 
 use crate::pcs::Commitment;
 use crate::utils::ec::small_multiexp_affine;

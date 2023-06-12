@@ -3,6 +3,7 @@ use ark_ff::{FftField, UniformRand};
 use ark_serialize::*;
 use ark_std::{end_timer, start_timer};
 use ark_std::rand::RngCore;
+use ark_std::vec::Vec;
 
 use crate::utils;
 use crate::utils::ec::single_base_msm;
