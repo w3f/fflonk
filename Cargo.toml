@@ -3,6 +3,9 @@ name = "fflonk"
 version = "0.1.0"
 edition = "2021"
 authors = ["Sergey Vasilyev <swasilyev@gmail.com>"]
+license = "MIT/Apache-2.0"
+description = "Collection of tools for augmenting polynomial commitment schemes"
+keywords = ["crypto", "cryptography", "fflonk", "shplonk"]
 
 [dependencies]
 ark-std = { version = "0.4", default-features = false }
