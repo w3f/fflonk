@@ -39,7 +39,7 @@ impl<E: Pairing> URS<E> {
         assert!(n > 0, "nothing to generate");
 
         // Until ECFFT for more curves is implemented, see https://github.com/wborgeaud/ecfft-bn254
-        assert!(n <= 1 << E::ScalarField::TWO_ADICITY, "number of bases exceeds curve 2-adicity");
+        assert!(n as u64 <= 1u64 << E::ScalarField::TWO_ADICITY, "number of bases exceeds curve 2-adicity");
 
         let t_powers = start_timer!(|| format!("Computing {} scalars powers", n));
         // tau^0, ..., tau^(n-1))
