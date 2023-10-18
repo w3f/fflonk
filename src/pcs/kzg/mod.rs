@@ -97,7 +97,10 @@ impl<E: Pairing> KZG<E> {
     }
 
     fn _commit(coeffs: &[E::ScalarField], bases: &[E::G1Affine]) -> KzgCommitment<E> {
-        let proj: E::G1 = VariableBaseMSM::msm_unchecked(bases, coeffs);
+        // `msm` allows to call into implementation of `VariableBaseMSM` for `Projective.
+        // This allows to call into custom implementations of `msm` (`msm_unchecked` not).
+        let len = usize::min(coeffs.len(), bases.len());
+        let proj = <E::G1 as VariableBaseMSM>::msm(&bases[..len], &coeffs[..len]).unwrap();
         KzgCommitment(proj.into_affine())
     }
 }
