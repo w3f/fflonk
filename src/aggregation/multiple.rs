@@ -1,9 +1,9 @@
-use std::collections::HashSet;
-
 use ark_ff::PrimeField;
 use ark_poly::Polynomial;
 use ark_std::{end_timer, start_timer};
+use ark_std::{vec, vec::Vec};
 use ark_std::iterable::Iterable;
+use ark_std::collections::BTreeSet;
 
 use crate::{EuclideanPolynomial, Poly, utils};
 use crate::pcs::{Commitment, PCS};
@@ -26,7 +26,7 @@ pub trait Transcript<F: PrimeField, CS: PCS<F>> {
 pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS>>(
     ck: &CS::CK,
     fs: &[Poly<F>],
-    xss: &[HashSet<F>],
+    xss: &[BTreeSet<F>],
     transcript: &mut T,
 ) -> (Poly<F>, F, CS::C) {
     assert_eq!(xss.len(), fs.len(), "{} opening sets specified for {} polynomials", xss.len(), fs.len());
@@ -204,8 +204,8 @@ mod tests {
         let xss = random_xss(rng, t, max_m);
         let opening = random_opening::<_, _, CS>(rng, &ck, d, t, xss);
 
-        let sets_of_xss: Vec<HashSet<F>> = opening.xss.iter()
-            .map(|xs| HashSet::from_iter(xs.iter().cloned()))
+        let sets_of_xss: Vec<BTreeSet<F>> = opening.xss.iter()
+            .map(|xs| BTreeSet::from_iter(xs.iter().cloned()))
             .collect();
 
         let transcript = &mut (F::rand(rng), F::rand(rng));

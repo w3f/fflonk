@@ -1,6 +1,7 @@
 use ark_ec::{AffineRepr, CurveGroup, Group};
 use ark_ec::scalar_mul::fixed_base::FixedBase;
 use ark_ff::{BigInteger, PrimeField, Zero};
+use ark_std::vec::Vec;
 
 pub fn naive_multiexp_affine<G: AffineRepr>(coeffs: &[G::ScalarField], bases: &[G]) -> G::Group {
     bases.iter().zip(coeffs.iter()).map(|(b, &c)| b.mul(c)).sum()

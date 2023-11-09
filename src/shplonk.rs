@@ -1,9 +1,9 @@
-use std::collections::HashSet;
-use std::marker::PhantomData;
-
 use ark_ff::PrimeField;
 use ark_poly::{DenseUVPolynomial, Polynomial};
 use ark_serialize::*;
+use ark_std::vec::Vec;
+use ark_std::marker::PhantomData;
+use ark_std::collections::BTreeSet;
 
 use crate::aggregation::multiple::{aggregate_claims, aggregate_polys, group_by_commitment, Transcript};
 use crate::pcs::PCS;
@@ -24,7 +24,7 @@ impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
     pub fn open_many<T: Transcript<F, CS>>(
         ck: &CS::CK,
         fs: &[Poly<F>],
-        xss: &[HashSet<F>],
+        xss: &[BTreeSet<F>],
         transcript: &mut T,
     ) -> AggregateProof<F, CS>
     {
@@ -127,8 +127,8 @@ pub(crate) mod tests {
         let xss = random_xss(rng, t, max_m);
         let opening = random_opening::<_, _, CS>(rng, &params.ck(), d, t, xss);
 
-        let sets_of_xss: Vec<HashSet<F>> = opening.xss.iter()
-            .map(|xs| HashSet::from_iter(xs.iter().cloned()))
+        let sets_of_xss: Vec<BTreeSet<F>> = opening.xss.iter()
+            .map(|xs| BTreeSet::from_iter(xs.iter().cloned()))
             .collect();
 
         let transcript = &mut (F::rand(rng), F::rand(rng));

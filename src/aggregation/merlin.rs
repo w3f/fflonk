@@ -1,5 +1,6 @@
 use ark_ff::PrimeField;
 use ark_serialize::{CanonicalSerialize, Compress};
+use ark_std::vec;
 
 use crate::aggregation::multiple::Transcript;
 use crate::pcs::PCS;

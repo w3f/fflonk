@@ -3,6 +3,7 @@ use ark_ff::{FftField, UniformRand};
 use ark_serialize::*;
 use ark_std::{end_timer, start_timer};
 use ark_std::rand::RngCore;
+use ark_std::vec::Vec;
 
 use crate::utils;
 use crate::utils::ec::single_base_msm;
@@ -37,8 +38,11 @@ impl<E: Pairing> URS<E> {
         let n = n1.max(n2);
         assert!(n > 0, "nothing to generate");
 
-        // Until ECFFT for more curves is implemented, see https://github.com/wborgeaud/ecfft-bn254
-        assert!(n <= 1 << E::ScalarField::TWO_ADICITY, "number of bases exceeds curve 2-adicity");
+        // Until ECFFT for more curves is implemented, see https://github.com/wborgeaud/ecfft-bn254.
+        //
+        // Assertion note: as `TWO_ADICITY` for the field can be >= 32 and on 32-bit machine targets
+        // `usize` is just 32-bit we move the check in the `u64` domain to avoid a panic.
+        assert!(n as u64 <= 1u64 << E::ScalarField::TWO_ADICITY, "number of bases exceeds curve 2-adicity");
 
         let t_powers = start_timer!(|| format!("Computing {} scalars powers", n));
         // tau^0, ..., tau^(n-1))

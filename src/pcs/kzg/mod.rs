@@ -6,6 +6,7 @@ use ark_poly::{DenseUVPolynomial, Evaluations, Polynomial};
 use ark_std::marker::PhantomData;
 use ark_std::ops::Mul;
 use ark_std::rand::Rng;
+use ark_std::vec::Vec;
 
 use crate::pcs::{CommitterKey, PCS};
 use crate::pcs::kzg::commitment::KzgCommitment;
@@ -19,6 +20,7 @@ pub mod params;
 pub mod commitment;
 mod lagrange;
 
+#[derive(Clone)]
 pub struct KZG<E: Pairing> {
     _engine: PhantomData<E>,
 }
@@ -88,14 +90,17 @@ impl<E: Pairing> KZG<E> {
     }
 
     pub fn verify_batch<R: Rng>(openings: Vec<KzgOpening<E>>, vk: &KzgVerifierKey<E>, rng: &mut R) -> bool {
-        let one = std::iter::once(E::ScalarField::one());
+        let one = ark_std::iter::once(E::ScalarField::one());
         let coeffs: Vec<E::ScalarField> = one.chain((1..openings.len()).map(|_| u128::rand(rng).into())).collect();
         let acc_opening = Self::accumulate(openings, &coeffs, vk);
         Self::verify_accumulated(acc_opening, vk)
     }
 
     fn _commit(coeffs: &[E::ScalarField], bases: &[E::G1Affine]) -> KzgCommitment<E> {
-        let proj: E::G1 = VariableBaseMSM::msm_unchecked(bases, coeffs);
+        // `msm` allows to call into implementation of `VariableBaseMSM` for `Projective.
+        // This allows to call into custom implementations of `msm` (`msm_unchecked` not).
+        let len = usize::min(coeffs.len(), bases.len());
+        let proj = <E::G1 as VariableBaseMSM>::msm(&bases[..len], &coeffs[..len]).unwrap();
         KzgCommitment(proj.into_affine())
     }
 }
@@ -153,6 +158,7 @@ mod tests {
     use ark_poly::{DenseUVPolynomial, EvaluationDomain, GeneralEvaluationDomain};
     use ark_std::{end_timer, start_timer};
     use ark_std::test_rng;
+    use ark_std::vec;
 
     use crate::pcs::PcsParams;
     use crate::tests::{BenchCurve, TestCurve, TestField};

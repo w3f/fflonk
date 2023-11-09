@@ -1,8 +1,10 @@
-use std::marker::PhantomData;
+#![cfg_attr(not(feature = "std"), no_std)]
 
 use ark_ff::PrimeField;
 use ark_poly::univariate::{DenseOrSparsePolynomial, DensePolynomial};
 use ark_std::rand::Rng;
+use ark_std::vec::Vec;
+use ark_std::marker::PhantomData;
 
 use aggregation::multiple::Transcript;
 
@@ -121,6 +123,7 @@ mod tests {
     use ark_poly::{DenseUVPolynomial, Polynomial};
     use ark_std::rand::Rng;
     use ark_std::test_rng;
+    use ark_std::vec;
 
     use crate::pcs::IdentityCommitment;
     use crate::pcs::kzg::KZG;
