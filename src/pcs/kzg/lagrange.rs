@@ -13,8 +13,8 @@ use crate::utils::ec::single_base_msm;
 #[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct LagrangianCK<G: AffineRepr, D: EvaluationDomain<G::ScalarField> = GeneralEvaluationDomain<<G as AffineRepr>::ScalarField>> {
     // L_0(tau).G, L_1(tau).G, ..., L_{n-1}(tau).G
-    pub(crate) lis_in_g: Vec<G>,
-    pub(crate) domain: D,
+    pub lis_in_g: Vec<G>,
+    pub domain: D,
 }
 
 

@@ -49,8 +49,8 @@ impl<E: Pairing> PcsParams for URS<E> {
 
 #[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct KzgCommitterKey<G: AffineRepr> {
-    pub(crate) monomial: MonomialCK<G>,
-    pub(crate) lagrangian: Option<LagrangianCK<G>>,
+    pub monomial: MonomialCK<G>,
+    pub lagrangian: Option<LagrangianCK<G>>,
 }
 
 

@@ -16,7 +16,7 @@ use crate::utils::ec::{small_multiexp_affine, small_multiexp_proj};
 
 pub mod urs;
 pub mod params;
-mod commitment;
+pub mod commitment;
 mod lagrange;
 
 pub struct KZG<E: Pairing> {
