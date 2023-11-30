@@ -77,13 +77,13 @@ impl<G: AffineRepr> CommitterKey for KzgCommitterKey<G> {
 
 /// Verifier key with G2 elements not "prepared". Exists only to be serializable.
 /// KzgVerifierKey is used for verification.
-#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct RawKzgVerifierKey<E: Pairing> {
-    g1: E::G1Affine,
+    pub g1: E::G1Affine,
     // generator of G1
-    g2: E::G2Affine,
+    pub g2: E::G2Affine,
     // generator of G2
-    tau_in_g2: E::G2Affine, // tau.g2
+    pub tau_in_g2: E::G2Affine, // tau.g2
 }
 
 
