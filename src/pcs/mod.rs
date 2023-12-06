@@ -52,7 +52,7 @@ pub trait VerifierKey: Clone + Debug {
 
 
 /// Generates a `VerifierKey`, serializable
-pub trait RawVerifierKey: Clone + Debug + CanonicalSerialize + CanonicalDeserialize {
+pub trait RawVerifierKey: Clone + Debug + Eq + PartialEq + CanonicalSerialize + CanonicalDeserialize {
     type VK: VerifierKey;
 
     fn prepare(&self) -> Self::VK;
