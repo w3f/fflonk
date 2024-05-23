@@ -1,10 +1,14 @@
-use ark_ec::{AffineRepr, CurveGroup, Group};
 use ark_ec::scalar_mul::fixed_base::FixedBase;
+use ark_ec::{AffineRepr, CurveGroup, Group};
 use ark_ff::{BigInteger, PrimeField, Zero};
 use ark_std::vec::Vec;
 
 pub fn naive_multiexp_affine<G: AffineRepr>(coeffs: &[G::ScalarField], bases: &[G]) -> G::Group {
-    bases.iter().zip(coeffs.iter()).map(|(b, &c)| b.mul(c)).sum()
+    bases
+        .iter()
+        .zip(coeffs.iter())
+        .map(|(b, &c)| b.mul(c))
+        .sum()
 }
 
 /// Performs a small multi-exponentiation operation.
@@ -12,7 +16,10 @@ pub fn naive_multiexp_affine<G: AffineRepr>(coeffs: &[G::ScalarField], bases: &[
 // adopted from https://github.com/zcash/halo2/pull/20
 pub fn small_multiexp_affine<G: AffineRepr>(coeffs: &[G::ScalarField], bases: &[G]) -> G::Group {
     let bytes_in_repr = <G::ScalarField as PrimeField>::BigInt::NUM_LIMBS * 8;
-    let coeffs: Vec<_> = coeffs.iter().map(|c| c.into_bigint().to_bytes_le()).collect();
+    let coeffs: Vec<_> = coeffs
+        .iter()
+        .map(|c| c.into_bigint().to_bytes_le())
+        .collect();
 
     let mut acc = G::Group::zero();
 
@@ -41,7 +48,10 @@ pub fn small_multiexp_proj<G: CurveGroup>(coeffs: &[G::ScalarField], bases: &[G]
 
 pub fn _small_multiexp_proj_2<G: CurveGroup>(coeffs: &[G::ScalarField], bases: &[G]) -> G {
     let bytes_in_repr = <G::ScalarField as PrimeField>::BigInt::NUM_LIMBS * 8;
-    let coeffs: Vec<_> = coeffs.iter().map(|c| c.into_bigint().to_bytes_le()).collect();
+    let coeffs: Vec<_> = coeffs
+        .iter()
+        .map(|c| c.into_bigint().to_bytes_le())
+        .collect();
 
     let mut acc = G::zero();
 

@@ -1,14 +1,14 @@
 use ark_ff::PrimeField;
 use ark_poly::Polynomial;
+use ark_std::collections::BTreeSet;
+use ark_std::iterable::Iterable;
 use ark_std::{end_timer, start_timer};
 use ark_std::{vec, vec::Vec};
-use ark_std::iterable::Iterable;
-use ark_std::collections::BTreeSet;
 
-use crate::{EuclideanPolynomial, Poly, utils};
 use crate::pcs::{Commitment, PCS};
 use crate::utils::poly;
 use crate::utils::poly::interpolate_evaluate;
+use crate::{utils, EuclideanPolynomial, Poly};
 
 pub struct MultipointClaim<F: PrimeField, C: Commitment<F>> {
     pub c: C,
@@ -22,14 +22,19 @@ pub trait Transcript<F: PrimeField, CS: PCS<F>> {
     fn get_zeta(&mut self) -> F;
 }
 
-
 pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS>>(
     ck: &CS::CK,
     fs: &[Poly<F>],
     xss: &[BTreeSet<F>],
     transcript: &mut T,
 ) -> (Poly<F>, F, CS::C) {
-    assert_eq!(xss.len(), fs.len(), "{} opening sets specified for {} polynomials", xss.len(), fs.len());
+    assert_eq!(
+        xss.len(),
+        fs.len(),
+        "{} opening sets specified for {} polynomials",
+        xss.len(),
+        fs.len()
+    );
     // Both Halo-inf and fflonk/shplonk use the notation "complement" in set-theoretical sense to that used in the code.
     // The papers consider vanishing polynomials of the complements of the opening sets,
     // while in the code vanishing polynomials of the opening sets are used directly.
@@ -37,18 +42,17 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS>>(
     // using https://eprint.iacr.org/2021/1167.pdf, Lemma 4.2. as the authority.
 
     // zi - the vanishing polynomial of the set xsi ("Si" in the paper) of the opening points for fi, i = 0,...,k-1
-    let zs: Vec<_> = xss.iter()
-        .map(|xsi| poly::z_of_set(xsi))
-        .collect();
+    let zs: Vec<_> = xss.iter().map(|xsi| poly::z_of_set(xsi)).collect();
     // The paper defines "T" as the set of all the opening points, "Z_T", it's vanishing polynomial,
     // and "Z_{T\S_i}" as the vanishing polynomial of the complement of "Si" in "T".
     // Observe that for zi computed above, "Z_T" = zi * "Z_{T\S_i}"     (*)
 
-
     // (qi, ri) - the quotient and the remainder of division of fi by the corresponding vanishing polynomial zi
     // qi = (fi - ri) / zi     (**)
     let t_divisions = start_timer!(|| "polynomial divisions");
-    let (qs, rs): (Vec<_>, Vec<_>) = fs.iter().zip(zs.iter())
+    let (qs, rs): (Vec<_>, Vec<_>) = fs
+        .iter()
+        .zip(zs.iter())
         .map(|(fi, zi)| fi.divide_with_q_and_r(zi))
         .unzip();
     end_timer!(t_divisions);
@@ -72,7 +76,9 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS>>(
     let zs_at_zeta: Vec<_> = zs.iter().map(|zi| zi.evaluate(&zeta)).collect();
 
     // Let pi(X) = fi(X) - ri(zeta)
-    let ps: Vec<Poly<F>> = fs.iter().zip(rs_at_zeta)
+    let ps: Vec<Poly<F>> = fs
+        .iter()
+        .zip(rs_at_zeta)
         .map(|(fi, ri)| fi - &poly::constant(ri))
         .collect();
 
@@ -102,7 +108,9 @@ fn get_coeffs<F: PrimeField>(zs_at_zeta: Vec<F>, gamma: F) -> (Vec<F>, F) {
     let mut zs_at_zeta_inv = zs_at_zeta;
     ark_ff::batch_inversion(&mut zs_at_zeta_inv);
 
-    let coeffs = zs_at_zeta_inv.iter().zip(utils::powers(gamma))
+    let coeffs = zs_at_zeta_inv
+        .iter()
+        .zip(utils::powers(gamma))
         .map(|(zi_inv, gamma_to_i)| gamma_to_i * zi_inv * normalizer)
         .collect();
 
@@ -114,7 +122,8 @@ pub fn group_by_commitment<F: PrimeField, C: Commitment<F>>(
     xss: &Vec<Vec<F>>,
     yss: &Vec<Vec<F>>,
 ) -> Vec<MultipointClaim<F, C>> {
-    fcs.iter().cloned()
+    fcs.iter()
+        .cloned()
         .zip(xss.iter().cloned())
         .zip(yss.iter().cloned())
         .map(|((c, xs), ys)| MultipointClaim { c, xs, ys })
@@ -126,8 +135,7 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS>>(
     qc: &CS::C,
     onec: &CS::C,
     transcript: &mut T,
-) -> MultipointClaim<F, CS::C>
-{
+) -> MultipointClaim<F, CS::C> {
     let gamma = transcript.get_gamma();
     transcript.commit_to_q(&qc);
     let zeta = transcript.get_zeta();
@@ -137,7 +145,8 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS>>(
     // and ri is the interpolation polynomial of the set {(xj, yj)}.
     // ri(zeta), zi(zeta)
     let t_eval = start_timer!(|| "barycentric evaluations");
-    let (rs_at_zeta, zs_at_zeta): (Vec<_>, Vec<_>) = claims.iter()
+    let (rs_at_zeta, zs_at_zeta): (Vec<_>, Vec<_>) = claims
+        .iter()
         .map(|MultipointClaim { c: _, xs, ys }| interpolate_evaluate(xs, ys, &zeta))
         .unzip();
     end_timer!(t_eval);
@@ -145,7 +154,9 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS>>(
     let (mut coeffs, normalizer) = get_coeffs(zs_at_zeta, gamma);
     assert!(coeffs[0].is_one());
 
-    let agg_r_at_zeta: F = rs_at_zeta.into_iter().zip(coeffs.iter())
+    let agg_r_at_zeta: F = rs_at_zeta
+        .into_iter()
+        .zip(coeffs.iter())
         .map(|(ri_at_zeta, coeff)| ri_at_zeta * coeff)
         .sum();
 
@@ -158,21 +169,24 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS>>(
     let t_combine = start_timer!(|| "multiexp");
     let lc = CS::C::combine(&coeffs, &commitments);
     end_timer!(t_combine);
-    MultipointClaim { c: lc, xs: vec![zeta], ys: vec![F::zero()] }
+    MultipointClaim {
+        c: lc,
+        xs: vec![zeta],
+        ys: vec![F::zero()],
+    }
 }
-
 
 #[cfg(test)]
 mod tests {
     use ark_ff::{One, UniformRand};
-    use ark_std::{end_timer, start_timer};
     use ark_std::iter::FromIterator;
     use ark_std::test_rng;
+    use ark_std::{end_timer, start_timer};
 
     use crate::pcs::IdentityCommitment;
     use crate::pcs::PcsParams;
     use crate::shplonk::tests::{random_opening, random_xss};
-    use crate::tests::{BENCH_DEG_LOG1, BenchField, BenchKzg, TestField, TestKzg};
+    use crate::tests::{BenchField, BenchKzg, TestField, TestKzg, BENCH_DEG_LOG1};
 
     use super::*;
 
@@ -192,7 +206,8 @@ mod tests {
         assert!(coeffs.iter().zip(zs).all(|(c, z)| z * c == normalizer));
     }
 
-    fn _test_aggregation<F: PrimeField, CS: PCS<F>>(d: usize) { // degree of polynomials
+    fn _test_aggregation<F: PrimeField, CS: PCS<F>>(d: usize) {
+        // degree of polynomials
         let rng = &mut test_rng();
 
         let t = 8; // number of polynomials
@@ -204,14 +219,18 @@ mod tests {
         let xss = random_xss(rng, t, max_m);
         let opening = random_opening::<_, _, CS>(rng, &ck, d, t, xss);
 
-        let sets_of_xss: Vec<BTreeSet<F>> = opening.xss.iter()
+        let sets_of_xss: Vec<BTreeSet<F>> = opening
+            .xss
+            .iter()
             .map(|xs| BTreeSet::from_iter(xs.iter().cloned()))
             .collect();
 
         let transcript = &mut (F::rand(rng), F::rand(rng));
 
-        let t_aggregate_polys = start_timer!(|| format!("Aggregate {} degree-{} polynomials", t, d));
-        let (agg_poly, zeta, agg_proof) = aggregate_polys::<_, CS, _>(&ck, &opening.fs, &sets_of_xss, transcript);
+        let t_aggregate_polys =
+            start_timer!(|| format!("Aggregate {} degree-{} polynomials", t, d));
+        let (agg_poly, zeta, agg_proof) =
+            aggregate_polys::<_, CS, _>(&ck, &opening.fs, &sets_of_xss, transcript);
         end_timer!(t_aggregate_polys);
 
         let claims = group_by_commitment(&opening.fcs, &opening.xss, &opening.yss);

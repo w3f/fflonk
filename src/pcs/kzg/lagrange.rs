@@ -3,21 +3,23 @@ use ark_ff::Zero;
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::RngCore;
-use ark_std::UniformRand;
 use ark_std::vec::Vec;
+use ark_std::UniformRand;
 
-use crate::pcs::CommitterKey;
 use crate::pcs::kzg::params::MonomialCK;
+use crate::pcs::CommitterKey;
 use crate::utils::ec::single_base_msm;
 
 /// Used to commit to univariate polynomials represented in the evaluation form.
 #[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
-pub struct LagrangianCK<G: AffineRepr, D: EvaluationDomain<G::ScalarField> = GeneralEvaluationDomain<<G as AffineRepr>::ScalarField>> {
+pub struct LagrangianCK<
+    G: AffineRepr,
+    D: EvaluationDomain<G::ScalarField> = GeneralEvaluationDomain<<G as AffineRepr>::ScalarField>,
+> {
     // L_0(tau).G, L_1(tau).G, ..., L_{n-1}(tau).G
     pub lis_in_g: Vec<G>,
     pub domain: D,
 }
-
 
 impl<G: AffineRepr> CommitterKey for LagrangianCK<G> {
     fn max_degree(&self) -> usize {
@@ -41,9 +43,14 @@ impl<G: AffineRepr, D: EvaluationDomain<G::ScalarField>> LagrangianCK<G, D> {
 }
 
 impl<G: AffineRepr> MonomialCK<G> {
-    pub fn to_lagrangian<D: EvaluationDomain<G::ScalarField>>(&self, domain: D) -> LagrangianCK<G, D> {
+    pub fn to_lagrangian<D: EvaluationDomain<G::ScalarField>>(
+        &self,
+        domain: D,
+    ) -> LagrangianCK<G, D> {
         assert!(self.max_evals() >= domain.size());
-        let mut monomial_bases = self.powers_in_g1.iter()
+        let mut monomial_bases = self
+            .powers_in_g1
+            .iter()
             .take(domain.size())
             .map(|p| p.into_group())
             .collect();
@@ -54,13 +61,9 @@ impl<G: AffineRepr> MonomialCK<G> {
         };
 
         let lis_in_g = G::Group::normalize_batch(&lagrangian_bases);
-        LagrangianCK {
-            lis_in_g,
-            domain,
-        }
+        LagrangianCK { lis_in_g, domain }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -85,7 +88,11 @@ mod tests {
         let monomial_ck = urs.ck().monomial;
         let lagrangian_ck_from_monomial_urs = monomial_ck.to_lagrangian(domain);
 
-        let lagrangian_ck_from_trapdoor = LagrangianCK::<<TestCurve as Pairing>::G1Affine>::from_trapdoor(domain, tau, g1);
-        assert_eq!(lagrangian_ck_from_monomial_urs.lis_in_g, lagrangian_ck_from_trapdoor.lis_in_g);
+        let lagrangian_ck_from_trapdoor =
+            LagrangianCK::<<TestCurve as Pairing>::G1Affine>::from_trapdoor(domain, tau, g1);
+        assert_eq!(
+            lagrangian_ck_from_monomial_urs.lis_in_g,
+            lagrangian_ck_from_trapdoor.lis_in_g
+        );
     }
 }
