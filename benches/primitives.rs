@@ -1,11 +1,11 @@
 use std::ops::Mul;
 
 use ark_bw6_761::BW6_761;
-use ark_ec::{AffineRepr, CurveGroup, Group};
 use ark_ec::pairing::Pairing;
+use ark_ec::{AffineRepr, CurveGroup, Group};
 use ark_ff::UniformRand;
 use ark_std::test_rng;
-use criterion::{Criterion, criterion_group, criterion_main};
+use criterion::{criterion_group, criterion_main, Criterion};
 
 use fflonk::utils::curve_name;
 
@@ -24,7 +24,7 @@ fn scalar_mul<E: Pairing>(c: &mut Criterion) {
     let _res: E::G1 = bases_affine[0].mul(exps[0]); // result of affine mul is projective
 
     let mut i = 0;
-    group.bench_function("proj", |b|
+    group.bench_function("proj", |b| {
         b.iter_with_setup(
             || {
                 let pair = (bases_projective[i], exps[i]);
@@ -32,10 +32,11 @@ fn scalar_mul<E: Pairing>(c: &mut Criterion) {
                 pair
             },
             |(base, exp)| base.mul(exp),
-        ));
+        )
+    });
 
     let mut i = 0;
-    group.bench_function("aff", |b|
+    group.bench_function("aff", |b| {
         b.iter_with_setup(
             || {
                 let pair = (bases_affine[i], exps[i]);
@@ -43,7 +44,8 @@ fn scalar_mul<E: Pairing>(c: &mut Criterion) {
                 pair
             },
             |(base, exp)| base.mul(exp),
-        ));
+        )
+    });
 
     group.finish();
 }
@@ -73,6 +75,10 @@ fn additions<E: Pairing>(c: &mut Criterion) {
     group.finish();
 }
 
-
-criterion_group!(benches, scalar_mul::<BW6_761>, coordinates_conversion::<BW6_761>, additions::<BW6_761>);
+criterion_group!(
+    benches,
+    scalar_mul::<BW6_761>,
+    coordinates_conversion::<BW6_761>,
+    additions::<BW6_761>
+);
 criterion_main!(benches);

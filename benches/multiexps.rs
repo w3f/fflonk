@@ -2,7 +2,7 @@ use ark_ec::pairing::Pairing;
 use ark_ec::VariableBaseMSM;
 use ark_ff::{PrimeField, UniformRand};
 use ark_std::test_rng;
-use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 
 use fflonk::utils::ec;
 
@@ -11,8 +11,12 @@ fn small_multiexp_affine<E: Pairing>(c: &mut Criterion) {
     let n = 10;
 
     let bases = (0..n).map(|_| E::G1Affine::rand(rng)).collect::<Vec<_>>();
-    let exps_full = (0..n).map(|_| E::ScalarField::rand(rng)).collect::<Vec<_>>();
-    let exps_128 = (0..n).map(|_| E::ScalarField::from(u128::rand(rng))).collect::<Vec<_>>();
+    let exps_full = (0..n)
+        .map(|_| E::ScalarField::rand(rng))
+        .collect::<Vec<_>>();
+    let exps_128 = (0..n)
+        .map(|_| E::ScalarField::from(u128::rand(rng)))
+        .collect::<Vec<_>>();
 
     let mut group = c.benchmark_group("small-multiexp-affine");
     group.bench_with_input(BenchmarkId::new("small-multiexp-full", n), &n, |b, _n| {
@@ -35,7 +39,9 @@ fn small_multiexp_proj<E: Pairing>(c: &mut Criterion) {
     let n = 10;
 
     let bases = (0..n).map(|_| E::G1::rand(rng)).collect::<Vec<_>>();
-    let exps_128 = (0..n).map(|_| E::ScalarField::from(u128::rand(rng))).collect::<Vec<_>>();
+    let exps_128 = (0..n)
+        .map(|_| E::ScalarField::from(u128::rand(rng)))
+        .collect::<Vec<_>>();
 
     let mut group = c.benchmark_group("small-multiexp-proj");
     group.bench_with_input(BenchmarkId::new("in_affine", n), &n, |b, _n| {
@@ -54,12 +60,21 @@ fn small_multiexp_vs_msm<E: Pairing>(c: &mut Criterion) {
     for n in [10, 20] {
         let bases = (0..n).map(|_| E::G1Affine::rand(rng)).collect::<Vec<_>>();
 
-        let exps_full = (0..n).map(|_| E::ScalarField::rand(rng)).collect::<Vec<_>>();
-        let exps_128 = (0..n).map(|_| E::ScalarField::from(u128::rand(rng))).collect::<Vec<_>>();
+        let exps_full = (0..n)
+            .map(|_| E::ScalarField::rand(rng))
+            .collect::<Vec<_>>();
+        let exps_128 = (0..n)
+            .map(|_| E::ScalarField::from(u128::rand(rng)))
+            .collect::<Vec<_>>();
 
-        let exps_full_repr = exps_full.iter().map(|exp| exp.into_bigint()).collect::<Vec<_>>();
-        let exps_128_repr = exps_128.iter().map(|exp| exp.into_bigint()).collect::<Vec<_>>();
-
+        let exps_full_repr = exps_full
+            .iter()
+            .map(|exp| exp.into_bigint())
+            .collect::<Vec<_>>();
+        let exps_128_repr = exps_128
+            .iter()
+            .map(|exp| exp.into_bigint())
+            .collect::<Vec<_>>();
 
         group.bench_with_input(BenchmarkId::new("small-multiexp-full", n), &n, |b, _n| {
             b.iter(|| ec::small_multiexp_affine(&exps_full, &bases))
@@ -78,8 +93,8 @@ fn small_multiexp_vs_msm<E: Pairing>(c: &mut Criterion) {
     group.finish();
 }
 
-
-criterion_group!(benches,
+criterion_group!(
+    benches,
     small_multiexp_affine::<ark_bw6_761::BW6_761>,
     small_multiexp_proj::<ark_bw6_761::BW6_761>,
     small_multiexp_vs_msm::<ark_bw6_761::BW6_761>,
