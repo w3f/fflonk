@@ -1,12 +1,13 @@
 use ark_ec::pairing::Pairing;
+use ark_ec::ScalarMul;
 use ark_ff::{FftField, UniformRand};
 use ark_serialize::*;
-use ark_std::{end_timer, start_timer};
+use ark_std::format;
 use ark_std::rand::RngCore;
 use ark_std::vec::Vec;
+use ark_std::{end_timer, start_timer};
 
 use crate::utils;
-use crate::utils::ec::single_base_msm;
 
 /// Updatable Universal References String
 #[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
@@ -50,11 +51,11 @@ impl<E: Pairing> URS<E> {
         end_timer!(t_powers);
 
         let t_msm_g1 = start_timer!(|| format!("{}-scalar mul in G1", n1));
-        let powers_in_g1 = single_base_msm(&powers_of_tau[..n1], g1);
+        let powers_in_g1 = g1.batch_mul(&powers_of_tau[..n1]);
         end_timer!(t_msm_g1);
 
         let t_msm_g2 = start_timer!(|| format!("{}-scalar mul in G1", n2));
-        let powers_in_g2 = single_base_msm(&powers_of_tau[..n2], g2);
+        let powers_in_g2 = g2.batch_mul(&powers_of_tau[..n2]);
         end_timer!(t_msm_g2);
 
         URS {

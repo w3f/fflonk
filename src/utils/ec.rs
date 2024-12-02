@@ -1,5 +1,4 @@
-use ark_ec::{AffineRepr, CurveGroup, Group};
-use ark_ec::scalar_mul::fixed_base::FixedBase;
+use ark_ec::{AffineRepr, CurveGroup, AdditiveGroup};
 use ark_ff::{BigInteger, PrimeField, Zero};
 use ark_std::vec::Vec;
 
@@ -61,16 +60,4 @@ pub fn _small_multiexp_proj_2<G: CurveGroup>(coeffs: &[G::ScalarField], bases: &
     }
 
     acc
-}
-
-// Multiply the same base by each scalar.
-pub fn single_base_msm<G: CurveGroup>(scalars: &[G::ScalarField], g: G) -> Vec<G::Affine> {
-    let num_scalars = scalars.len();
-    let window_size = FixedBase::get_mul_window_size(num_scalars);
-    let bits_in_scalar = G::ScalarField::MODULUS_BIT_SIZE.try_into().unwrap();
-    let table = FixedBase::get_window_table(bits_in_scalar, window_size, g);
-    let scalars_in_g = FixedBase::msm(bits_in_scalar, window_size, &table, scalars);
-    assert_eq!(scalars_in_g.len(), num_scalars);
-
-    G::normalize_batch(&scalars_in_g)
 }

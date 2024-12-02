@@ -1,4 +1,4 @@
-use ark_ec::{AffineRepr, CurveGroup};
+use ark_ec::{AffineRepr, CurveGroup, ScalarMul};
 use ark_ff::Zero;
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
@@ -8,7 +8,6 @@ use ark_std::vec::Vec;
 
 use crate::pcs::CommitterKey;
 use crate::pcs::kzg::params::MonomialCK;
-use crate::utils::ec::single_base_msm;
 
 /// Used to commit to univariate polynomials represented in the evaluation form.
 #[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
@@ -35,7 +34,7 @@ impl<G: AffineRepr, D: EvaluationDomain<G::ScalarField>> LagrangianCK<G, D> {
     pub fn from_trapdoor(domain: D, tau: G::ScalarField, g: G::Group) -> Self {
         assert!(!domain.evaluate_vanishing_polynomial(tau).is_zero()); // doesn't give a basis
         let lis_at_tau = domain.evaluate_all_lagrange_coefficients(tau); // L_i(tau)
-        let lis_in_g = single_base_msm(&lis_at_tau, g); // L_i(tau).G
+        let lis_in_g = g.batch_mul(&lis_at_tau); // L_i(tau).G
         Self { lis_in_g, domain }
     }
 }

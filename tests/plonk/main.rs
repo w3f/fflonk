@@ -65,7 +65,7 @@ impl<F: PrimeField> VanillaPlonkAssignments<F> {
     }
 
     fn quotient(&self, constraint: &Poly<F>) -> Poly<F> {
-        constraint.divide_by_vanishing_poly(self.domain).unwrap().0
+        constraint.divide_by_vanishing_poly(self.domain).0
     }
 }
 

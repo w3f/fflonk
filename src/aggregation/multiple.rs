@@ -1,14 +1,14 @@
 use ark_ff::PrimeField;
 use ark_poly::Polynomial;
+use ark_std::collections::BTreeSet;
+use ark_std::iterable::Iterable;
 use ark_std::{end_timer, start_timer};
 use ark_std::{vec, vec::Vec};
-use ark_std::iterable::Iterable;
-use ark_std::collections::BTreeSet;
 
-use crate::{EuclideanPolynomial, Poly, utils};
 use crate::pcs::{Commitment, PCS};
 use crate::utils::poly;
 use crate::utils::poly::interpolate_evaluate;
+use crate::{utils, EuclideanPolynomial, Poly};
 
 pub struct MultipointClaim<F: PrimeField, C: Commitment<F>> {
     pub c: C,
@@ -60,7 +60,7 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS>>(
     // By (*) "Z_T" = zi * "Z_{T\S_i}", hence q = f / (zi * "Z_{T\S_i})" = sum(gamma^i * (fi - ri) / zi)
     // By (**) qi = (fi - ri) / zi, thus q = sum(gamma^i * qi)
     let q = poly::sum_with_powers(gamma, &qs);
-    let t_commit = start_timer!(|| format!("commitment to a degree-{} polynomial", q.degree()));
+    let t_commit = start_timer!(|| ark_std::format!("commitment to a degree-{} polynomial", q.degree()));
     let qc = CS::commit(ck, &q);
     // "W" in the paper
     end_timer!(t_commit);
@@ -165,14 +165,15 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS>>(
 #[cfg(test)]
 mod tests {
     use ark_ff::{One, UniformRand};
-    use ark_std::{end_timer, start_timer};
+    use ark_std::format;
     use ark_std::iter::FromIterator;
     use ark_std::test_rng;
+    use ark_std::{end_timer, start_timer};
 
     use crate::pcs::IdentityCommitment;
     use crate::pcs::PcsParams;
     use crate::shplonk::tests::{random_opening, random_xss};
-    use crate::tests::{BENCH_DEG_LOG1, BenchField, BenchKzg, TestField, TestKzg};
+    use crate::tests::{BenchField, BenchKzg, TestField, TestKzg, BENCH_DEG_LOG1};
 
     use super::*;
 
