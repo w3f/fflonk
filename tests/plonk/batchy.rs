@@ -88,7 +88,7 @@ pub struct PlonkBatchKzgTest<F: PrimeField, CS: PCS<F>> {
 impl<F: PrimeField, CS: PCS<F>> PlonkBatchKzgTest<F, CS> {
     fn commit_polynomial(&self, ck: &CS::CK, poly: &Poly<F>) -> CS::C {
         let t_commitment = start_timer!(|| format!("Committing to degree {} polynomials", poly.degree()));
-        let commitment = CS::commit(ck, poly);
+        let commitment = CS::commit(ck, poly).unwrap();
         end_timer!(t_commitment);
         commitment
     }
@@ -152,8 +152,8 @@ impl<F: PrimeField, CS: PCS<F>> DecoyPlonk<F, CS> for PlonkBatchKzgTest<F, CS> {
         polys_to_open_at_zeta.extend_from_slice(&self.polys.polys_to_open_at_zeta_5());
         let agg_poly_at_zeta = poly::sum_with_coeffs(self.challenges.nus.clone(), &polys_to_open_at_zeta);
 
-        let proof_at_zeta = CS::open(ck, &agg_poly_at_zeta, zeta);
-        let proof_at_zeta_omega = CS::open(ck, &self.polys.poly_to_open_at_zeta_omega_5(), zeta_omega);
+        let proof_at_zeta = CS::open(ck, &agg_poly_at_zeta, zeta).unwrap();
+        let proof_at_zeta_omega = CS::open(ck, &self.polys.poly_to_open_at_zeta_omega_5(), zeta_omega).unwrap();
 
         // TODO: compute
         let t_extra = start_timer!(|| "Extra: commiting to the linearization polynomial");
@@ -214,6 +214,6 @@ impl<F: PrimeField, CS: PCS<F>> DecoyPlonk<F, CS> for PlonkBatchKzgTest<F, CS> {
                                      &mut test_rng());
         end_timer!(t_kzg_batch_opening);
         end_timer!(t_kzg);
-        valid
+        valid.is_ok()
     }
 }

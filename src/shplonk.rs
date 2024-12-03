@@ -30,7 +30,7 @@ impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
     {
         let (agg_poly, zeta, agg_proof) = aggregate_polys::<F, CS, T>(ck, fs, xss, transcript);
         assert!(agg_poly.evaluate(&zeta).is_zero());
-        let opening_proof = CS::open(ck, &agg_poly, zeta);
+        let opening_proof = CS::open(ck, &agg_poly, zeta).unwrap();
         AggregateProof {agg_proof, opening_proof}
     }
 
@@ -44,10 +44,10 @@ impl<F: PrimeField, CS: PCS<F>> Shplonk<F, CS> {
     ) -> bool
     {
         let AggregateProof {agg_proof, opening_proof} = proof;
-        let onec = CS::commit(&vk.clone().into(), &Poly::from_coefficients_slice(&[F::one()]));
+        let onec = CS::commit(&vk.clone().into(), &Poly::from_coefficients_slice(&[F::one()])).unwrap();
         let claims = group_by_commitment(fcs, xss, yss);
         let agg_claim = aggregate_claims::<F, CS, T>(claims, &agg_proof, &onec, transcript);
-        CS::verify(vk, agg_claim.c, agg_claim.xs[0], agg_claim.ys[0], opening_proof)
+        CS::verify(vk, agg_claim.c, agg_claim.xs[0], agg_claim.ys[0], opening_proof).is_ok()
     }
 }
 
@@ -100,7 +100,7 @@ pub(crate) mod tests {
             .collect();
         // commitments
         let fcs: Vec<_> = fs.iter()
-            .map(|fi| CS::commit(&ck, fi))
+            .map(|fi| CS::commit(&ck, fi).unwrap())
             .collect();
 
         // evaluations per polynomial
