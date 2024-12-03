@@ -61,7 +61,7 @@ pub fn aggregate_polys<F: PrimeField, CS: PCS<F>, T: Transcript<F, CS>>(
     // By (**) qi = (fi - ri) / zi, thus q = sum(gamma^i * qi)
     let q = poly::sum_with_powers(gamma, &qs);
     let t_commit = start_timer!(|| ark_std::format!("commitment to a degree-{} polynomial", q.degree()));
-    let qc = CS::commit(ck, &q);
+    let qc = CS::commit(ck, &q).unwrap();
     // "W" in the paper
     end_timer!(t_commit);
     transcript.commit_to_q(&qc);
@@ -216,13 +216,13 @@ mod tests {
         end_timer!(t_aggregate_polys);
 
         let claims = group_by_commitment(&opening.fcs, &opening.xss, &opening.yss);
-        let onec = CS::commit(&vk.clone().into(), &poly::constant(F::one()));
+        let onec = CS::commit(&vk.clone().into(), &poly::constant(F::one())).unwrap();
 
         let t_aggregate_claims = start_timer!(|| format!("Aggregate {} claims", claims.len()));
         let agg_claim = aggregate_claims::<_, CS, _>(claims, &agg_proof, &onec, transcript);
         end_timer!(t_aggregate_claims);
 
-        assert_eq!(CS::commit(&ck, &agg_poly), agg_claim.c);
+        assert_eq!(CS::commit(&ck, &agg_poly).unwrap(), agg_claim.c);
         assert_eq!(zeta, agg_claim.xs[0]);
         assert_eq!(agg_poly.evaluate(&zeta), agg_claim.ys[0]);
         assert!(agg_claim.ys[0].is_zero());
