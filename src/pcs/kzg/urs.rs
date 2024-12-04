@@ -31,7 +31,7 @@ impl<E: Pairing> URS<E> {
         let tau = E::ScalarField::rand(rng);
         let g1 = E::G1::rand(rng);
         let g2 = E::G2::rand(rng);
-        (tau, g1 , g2)
+        (tau, g1, g2)
     }
 
     /// Generates URS of the form: g1, tau.g1, ..., tau^{n1-1}.g1, g2, tau.g2, ..., tau^{n2-1}.g2
@@ -43,7 +43,10 @@ impl<E: Pairing> URS<E> {
         //
         // Assertion note: as `TWO_ADICITY` for the field can be >= 32 and on 32-bit machine targets
         // `usize` is just 32-bit we move the check in the `u64` domain to avoid a panic.
-        assert!(n as u64 <= 1u64 << E::ScalarField::TWO_ADICITY, "number of bases exceeds curve 2-adicity");
+        assert!(
+            n as u64 <= 1u64 << E::ScalarField::TWO_ADICITY,
+            "number of bases exceeds curve 2-adicity"
+        );
 
         let t_powers = start_timer!(|| format!("Computing {} scalars powers", n));
         // tau^0, ..., tau^(n-1))
@@ -65,7 +68,6 @@ impl<E: Pairing> URS<E> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use ark_std::test_rng;
@@ -78,7 +80,12 @@ mod tests {
         let n1 = 1 << log_n1;
         let n2 = 1 << log_n2;
 
-        let t_generate = start_timer!(|| format!("Generate 2^{} G1 and 2^{} G2 bases for {}", log_n1, log_n2, crate::utils::curve_name::<E>()));
+        let t_generate = start_timer!(|| format!(
+            "Generate 2^{} G1 and 2^{} G2 bases for {}",
+            log_n1,
+            log_n2,
+            crate::utils::curve_name::<E>()
+        ));
         let urs = URS::<E>::generate(n1, n2, &mut test_rng());
         end_timer!(t_generate);
 

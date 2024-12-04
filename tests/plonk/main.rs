@@ -4,9 +4,9 @@ use ark_poly::DenseUVPolynomial;
 use ark_poly::EvaluationDomain;
 use ark_poly::Radix2EvaluationDomain;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Compress};
-use ark_std::{end_timer, start_timer};
 use ark_std::rand::Rng;
 use ark_std::test_rng;
+use ark_std::{end_timer, start_timer};
 
 use fflonk::pcs::kzg::KZG;
 use fflonk::pcs::PCS;
@@ -15,9 +15,8 @@ use fflonk::Poly;
 use crate::batchy::PlonkBatchKzgTest;
 use crate::fflonky::PlonkWithFflonkTest;
 
-mod fflonky;
 mod batchy;
-
+mod fflonky;
 
 struct VanillaPlonkAssignments<F: PrimeField> {
     degree: usize,
@@ -77,7 +76,8 @@ trait DecoyPlonk<F: PrimeField, CS: PCS<F>> {
     fn setup<R: Rng>(&mut self, rng: &mut R) -> (CS::CK, CS::VK);
     fn preprocess(&mut self, ck: &CS::CK) -> Vec<CS::C>;
     fn prove(&mut self, ck: &CS::CK) -> Self::Proof;
-    fn verify(&self, vk: &CS::VK, preprocessed_commitments: Vec<CS::C>, proof: Self::Proof) -> bool;
+    fn verify(&self, vk: &CS::VK, preprocessed_commitments: Vec<CS::C>, proof: Self::Proof)
+        -> bool;
 }
 
 fn _test_vanilla_plonk_opening<F: PrimeField, CS: PCS<F>, T: DecoyPlonk<F, CS>>(log_n: usize) {
@@ -87,7 +87,11 @@ fn _test_vanilla_plonk_opening<F: PrimeField, CS: PCS<F>, T: DecoyPlonk<F, CS>>(
 
     let mut test = T::new(polys, rng);
 
-    let t_test = start_timer!(|| format!("domain_size = {},  curve = {}", n, fflonk::utils::curve_name::<Bls12_381>()));
+    let t_test = start_timer!(|| format!(
+        "domain_size = {},  curve = {}",
+        n,
+        fflonk::utils::curve_name::<Bls12_381>()
+    ));
 
     let t_setup = start_timer!(|| "Setup");
     let (ck, vk) = test.setup(rng);
@@ -105,7 +109,9 @@ fn _test_vanilla_plonk_opening<F: PrimeField, CS: PCS<F>, T: DecoyPlonk<F, CS>>(
 
     let proof_size = proof.serialized_size(Compress::Yes);
     let mut serialized_proof = vec![0; proof_size];
-    proof.serialize_compressed(&mut serialized_proof[..]).unwrap();
+    proof
+        .serialize_compressed(&mut serialized_proof[..])
+        .unwrap();
     let proof = T::Proof::deserialize_compressed(&serialized_proof[..]).unwrap();
 
     let t_verify = start_timer!(|| "Verifying");
@@ -114,7 +120,10 @@ fn _test_vanilla_plonk_opening<F: PrimeField, CS: PCS<F>, T: DecoyPlonk<F, CS>>(
 
     end_timer!(t_test);
 
-    println!("proof size = {}, preprocessed data size = {}", proof_size, preprocessed_size);
+    println!(
+        "proof size = {}, preprocessed data size = {}",
+        proof_size, preprocessed_size
+    );
 
     assert!(valid);
 }

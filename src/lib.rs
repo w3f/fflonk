@@ -2,9 +2,9 @@
 
 use ark_ff::PrimeField;
 use ark_poly::univariate::{DenseOrSparsePolynomial, DensePolynomial};
+use ark_std::marker::PhantomData;
 use ark_std::rand::Rng;
 use ark_std::vec::Vec;
-use ark_std::marker::PhantomData;
 
 use aggregation::multiple::Transcript;
 
@@ -12,12 +12,11 @@ use crate::fflonk::Fflonk;
 use crate::pcs::PCS;
 use crate::shplonk::{AggregateProof, Shplonk};
 
-pub mod shplonk;
+pub mod aggregation;
 pub mod fflonk;
 pub mod pcs;
+pub mod shplonk;
 pub mod utils;
-pub mod aggregation;
-
 
 pub type Poly<F> = DensePolynomial<F>; // currently SparsePolynomial doesn't implement DenseUVPolynomial anyway
 
@@ -33,7 +32,6 @@ impl<F: PrimeField> EuclideanPolynomial<F> for Poly<F> {
     }
 }
 
-
 pub struct FflonkyKzg<F: PrimeField, CS: PCS<F>> {
     _field: PhantomData<F>,
     _pcs: PhantomData<CS>,
@@ -47,26 +45,29 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
     pub fn open<T: Transcript<F, CS>>(
         ck: &CS::CK,
         fss: &[Vec<Poly<F>>], // vecs of polynomials to combine
-        ts: &[usize], // lengths of each combination
+        ts: &[usize],         // lengths of each combination
         // TODO: ts can be inferred from li := len(fss[i]) as ti = min(x : x >= li and x | p-1)
         rootss: &[Vec<F>], // sets of opening points per a combined polynomial presented as t-th roots
         transcript: &mut T,
-    ) -> AggregateProof<F, CS>
-    {
+    ) -> AggregateProof<F, CS> {
         let k = fss.len();
         assert_eq!(k, ts.len());
         assert_eq!(k, rootss.len());
-        let gs: Vec<Poly<F>> = fss.iter()
+        let gs: Vec<Poly<F>> = fss
+            .iter()
             .zip(ts.iter())
             .map(|(fs, t)| Fflonk::combine(*t, fs))
             .collect();
-        let xss: Vec<_> = rootss.iter()
+        let xss: Vec<_> = rootss
+            .iter()
             .zip(ts.iter())
-            .map(|(roots, t)|
-                roots.iter()
+            .map(|(roots, t)| {
+                roots
+                    .iter()
                     .flat_map(|root| Fflonk::<F, Poly<F>>::roots(*t, *root))
                     .collect()
-            ).collect();
+            })
+            .collect();
 
         Shplonk::<F, CS>::open_many(ck, &gs, &xss, transcript)
     }
@@ -79,14 +80,13 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
         rootss: &[Vec<F>],
         vss: &[Vec<Vec<F>>],
         transcript: &mut T,
-    ) -> bool
-    {
-        let (xss, yss) = rootss.iter()
+    ) -> bool {
+        let (xss, yss) = rootss
+            .iter()
             .zip(vss.iter())
             .zip(ts.iter())
-            .map(|((roots, vs), t)|
-                Fflonk::<F, Poly<F>>::multiopening(*t, roots, vs)
-            ).unzip();
+            .map(|((roots, vs), t)| Fflonk::<F, Poly<F>>::multiopening(*t, roots, vs))
+            .unzip();
 
         Shplonk::<F, CS>::verify_many(vk, &gcs, proof, &xss, &yss, transcript)
     }
@@ -94,11 +94,10 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
     pub fn open_single<T: Transcript<F, CS>>(
         ck: &CS::CK,
         fs: &[Poly<F>], // polynomials to combine
-        t: usize, // lengths of the combination
-        roots: &[F], // set of opening points presented as t-th roots
+        t: usize,       // lengths of the combination
+        roots: &[F],    // set of opening points presented as t-th roots
         transcript: &mut T,
-    ) -> AggregateProof<F, CS>
-    {
+    ) -> AggregateProof<F, CS> {
         Self::open(ck, &[fs.to_vec()], &[t], &[roots.to_vec()], transcript)
     }
 
@@ -110,12 +109,18 @@ impl<F: PrimeField, CS: PCS<F>> FflonkyKzg<F, CS> {
         roots: &[F],
         vss: &[Vec<F>], // evaluations per point // TODO: shplonk provides API with evals per polynomial
         transcript: &mut T,
-    ) -> bool
-    {
-        Self::verify(vk, &[(*gc).clone()], &[t], proof, &[roots.to_vec()], &[vss.to_vec()], transcript)
+    ) -> bool {
+        Self::verify(
+            vk,
+            &[(*gc).clone()],
+            &[t],
+            proof,
+            &[roots.to_vec()],
+            &[vss.to_vec()],
+            transcript,
+        )
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -125,21 +130,21 @@ mod tests {
     use ark_std::test_rng;
     use ark_std::vec;
 
-    use crate::pcs::IdentityCommitment;
     use crate::pcs::kzg::KZG;
+    use crate::pcs::IdentityCommitment;
     use crate::pcs::PcsParams;
 
     use super::*;
 
     pub(crate) type TestCurve = ark_bls12_381::Bls12_381;
     pub(crate) type TestField = <TestCurve as Pairing>::ScalarField;
-    pub(crate) type TestKzg = KZG::<TestCurve>;
+    pub(crate) type TestKzg = KZG<TestCurve>;
 
     pub(crate) type BenchCurve = ark_bw6_761::BW6_761;
     pub(crate) type BenchField = <BenchCurve as Pairing>::ScalarField;
 
     #[allow(dead_code)] // used by ignored tests
-    pub(crate) type BenchKzg = KZG::<BenchCurve>;
+    pub(crate) type BenchKzg = KZG<BenchCurve>;
 
     pub const BENCH_DEG_LOG1: usize = 10;
     // pub const BENCH_DEG_LOG2: usize = 16;
@@ -150,9 +155,7 @@ mod tests {
             self.0
         }
 
-        fn commit_to_q(&mut self, _q: &CS::C) {
-
-        }
+        fn commit_to_q(&mut self, _q: &CS::C) {}
 
         fn get_zeta(&mut self) -> F {
             self.1
@@ -166,32 +169,28 @@ mod tests {
         m: usize, // number of opening points
     ) -> (
         Vec<Poly<F>>, // polynomials
-        Vec<F>, // roots of evaluation points
-        Vec<Vec<F>>, // evaluations per point
-    ) where
+        Vec<F>,       // roots of evaluation points
+        Vec<Vec<F>>,  // evaluations per point
+    )
+    where
         R: Rng,
         F: PrimeField,
     {
         // polynomials
-        let fs: Vec<Poly<F>> = (0..t)
-            .map(|_| Poly::rand(d, rng))
-            .collect();
+        let fs: Vec<Poly<F>> = (0..t).map(|_| Poly::rand(d, rng)).collect();
 
-        let roots: Vec<_> = (0..m)
-            .map(|_| F::rand(rng))
-            .collect();
+        let roots: Vec<_> = (0..m).map(|_| F::rand(rng)).collect();
 
-        let xs: Vec<F> = roots.iter() // opening points
+        let xs: Vec<F> = roots
+            .iter() // opening points
             .map(|root| root.pow([t as u64]))
             .collect();
 
         // evaluations per point
-        let vss: Vec<_> = xs.iter()
-            .map(|x|
-                fs.iter()
-                    .map(|f| f.evaluate(x))
-                    .collect::<Vec<_>>()
-            ).collect();
+        let vss: Vec<_> = xs
+            .iter()
+            .map(|x| fs.iter().map(|f| f.evaluate(x)).collect::<Vec<_>>())
+            .collect();
 
         (fs, roots, vss)
     }
@@ -212,7 +211,15 @@ mod tests {
         let gc = CS::commit(&params.ck(), &g);
 
         let proof = FflonkyKzg::<F, CS>::open_single(&params.ck(), &fs, t, &roots, transcript);
-        assert!(FflonkyKzg::<F, CS>::verify_single(&params.vk(), &gc, t, proof, &roots, &vss, transcript));
+        assert!(FflonkyKzg::<F, CS>::verify_single(
+            &params.vk(),
+            &gc,
+            t,
+            proof,
+            &roots,
+            &vss,
+            transcript
+        ));
     }
 
     fn _test_fflonk<F: PrimeField, CS: PCS<F>>() {
@@ -228,23 +235,29 @@ mod tests {
         let mut fss = vec![];
         let mut rootss = vec![];
         let mut vsss = vec![];
-        for ((d, t), m) in ds.into_iter()
-            .zip(ts)
-            .zip(ms)
-        {
+        for ((d, t), m) in ds.into_iter().zip(ts).zip(ms) {
             let (fs, roots, vss) = generate_test_data(rng, d, t, m);
             fss.push(fs);
             rootss.push(roots);
             vsss.push(vss);
         }
 
-        let gcs: Vec<_> = fss.iter()
+        let gcs: Vec<_> = fss
+            .iter()
             .zip(ts)
             .map(|(fs, t)| CS::commit(&params.ck(), &Fflonk::combine(t, &fs)))
             .collect();
 
         let proof = FflonkyKzg::<F, CS>::open(&params.ck(), &fss, &ts, &rootss, transcript);
-        assert!(FflonkyKzg::<F, CS>::verify(&params.vk(), &gcs, &ts, proof, &rootss, &vsss, transcript));
+        assert!(FflonkyKzg::<F, CS>::verify(
+            &params.vk(),
+            &gcs,
+            &ts,
+            proof,
+            &rootss,
+            &vsss,
+            transcript
+        ));
     }
 
     #[test]
