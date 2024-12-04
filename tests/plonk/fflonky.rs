@@ -3,15 +3,15 @@ use std::marker::PhantomData;
 use ark_ff::{PrimeField, UniformRand, Zero};
 use ark_poly::Polynomial;
 use ark_serialize::*;
-use ark_std::{end_timer, start_timer};
 use ark_std::rand::Rng;
 use ark_std::test_rng;
+use ark_std::{end_timer, start_timer};
 
-use fflonk::{FflonkyKzg, Poly};
 use fflonk::fflonk::Fflonk;
-use fflonk::pcs::PCS;
 use fflonk::pcs::PcsParams;
+use fflonk::pcs::PCS;
 use fflonk::shplonk::AggregateProof;
+use fflonk::{FflonkyKzg, Poly};
 
 use crate::{DecoyPlonk, VanillaPlonkAssignments};
 
@@ -29,9 +29,18 @@ impl<F: PrimeField> VanillaPlonkAssignments<F> {
         fs1.push(t0);
         let fs2 = vec![z, t1, t2, Poly::zero()]; //TODO: zero is not strictly necessary
         vec![
-            Combination { fs: fs0, roots_of_xs: vec![zeta] },
-            Combination { fs: fs1, roots_of_xs: vec![zeta] },
-            Combination { fs: fs2, roots_of_xs: vec![zeta, zeta * omega] },
+            Combination {
+                fs: fs0,
+                roots_of_xs: vec![zeta],
+            },
+            Combination {
+                fs: fs1,
+                roots_of_xs: vec![zeta],
+            },
+            Combination {
+                fs: fs2,
+                roots_of_xs: vec![zeta, zeta * omega],
+            },
         ]
     }
 }
@@ -55,15 +64,17 @@ impl<F: PrimeField> Combination<F> {
     }
 
     fn xs(&self) -> Vec<F> {
-        self.roots_of_xs.iter() // opening points
+        self.roots_of_xs
+            .iter() // opening points
             .map(|root| root.pow([self.t() as u64]))
             .collect()
     }
 
     fn yss(&self) -> Vec<Vec<F>> {
-        self.xs().iter().map(|x|
-            self.fs.iter().map(|f| f.evaluate(x)).collect()
-        ).collect()
+        self.xs()
+            .iter()
+            .map(|x| self.fs.iter().map(|f| f.evaluate(x)).collect())
+            .collect()
     }
 }
 
@@ -74,8 +85,14 @@ pub struct PlonkWithFflonkTest<F: PrimeField, CS: PCS<F>> {
 
 impl<F: PrimeField, CS: PCS<F>> PlonkWithFflonkTest<F, CS> {
     fn _commit_proof_polynomials(&self, ck: &CS::CK) -> Vec<CS::C> {
-        let t_commitment = start_timer!(|| format!("Committing to {} proof polynomials", self.combinations.len() - 1));
-        let commitments = self.combinations.iter().enumerate()
+        let t_commitment = start_timer!(|| format!(
+            "Committing to {} proof polynomials",
+            self.combinations.len() - 1
+        ));
+        let commitments = self
+            .combinations
+            .iter()
+            .enumerate()
             .skip(1) // preprocessing
             .map(|(i, _)| self._commit_single(i, ck))
             .collect();
@@ -87,11 +104,19 @@ impl<F: PrimeField, CS: PCS<F>> PlonkWithFflonkTest<F, CS> {
         let combination = &self.combinations[i];
         let t_commit = start_timer!(|| format!("Committing to combination #{}", i));
 
-        let t_combine = start_timer!(|| format!("combining {} polynomials: t = {}, max_degree = {}", combination.fs.len(), combination.t(), combination.max_degree()));
+        let t_combine = start_timer!(|| format!(
+            "combining {} polynomials: t = {}, max_degree = {}",
+            combination.fs.len(),
+            combination.t(),
+            combination.max_degree()
+        ));
         let poly = Fflonk::combine(combination.t(), &combination.fs);
         end_timer!(t_combine);
 
-        let t_commit_combined = start_timer!(|| format!("committing to the combined polynomial: degree = {}", poly.degree()));
+        let t_commit_combined = start_timer!(|| format!(
+            "committing to the combined polynomial: degree = {}",
+            poly.degree()
+        ));
         let commitment = CS::commit(ck, &poly).unwrap();
         end_timer!(t_commit_combined);
 
@@ -100,10 +125,11 @@ impl<F: PrimeField, CS: PCS<F>> PlonkWithFflonkTest<F, CS> {
     }
 
     fn _open(&self, transcript: &mut merlin::Transcript, ck: &CS::CK) -> AggregateProof<F, CS> {
-        let (ts, (fss, xss)): (Vec<_>, (Vec<_>, Vec<_>)) =
-            self.combinations.iter()
-                .map(|c| (c.t(), (c.fs.clone(), c.roots_of_xs.clone())))
-                .unzip();
+        let (ts, (fss, xss)): (Vec<_>, (Vec<_>, Vec<_>)) = self
+            .combinations
+            .iter()
+            .map(|c| (c.t(), (c.fs.clone(), c.roots_of_xs.clone())))
+            .unzip();
 
         let t_open = start_timer!(|| "Opening");
         let proof = FflonkyKzg::<F, CS>::open(ck, &fss, &ts, &xss, transcript);
@@ -112,8 +138,7 @@ impl<F: PrimeField, CS: PCS<F>> PlonkWithFflonkTest<F, CS> {
     }
 
     fn _evaluate(&self) -> Vec<Vec<Vec<F>>> {
-        self.combinations.iter()
-            .map(|c| c.yss()).collect()
+        self.combinations.iter().map(|c| c.yss()).collect()
     }
 }
 
@@ -135,9 +160,12 @@ impl<F: PrimeField, CS: PCS<F>> DecoyPlonk<F, CS> for PlonkWithFflonkTest<F, CS>
     }
 
     fn setup<R: Rng>(&mut self, rng: &mut R) -> (CS::CK, CS::VK) {
-        let max_degree = self.combinations.iter()
+        let max_degree = self
+            .combinations
+            .iter()
             .map(|c| c.max_combined_degree())
-            .max().unwrap();
+            .max()
+            .unwrap();
         let params = CS::setup(max_degree, rng);
         (params.ck(), params.vk())
     }
@@ -152,17 +180,35 @@ impl<F: PrimeField, CS: PCS<F>> DecoyPlonk<F, CS> for PlonkWithFflonkTest<F, CS>
         let commitments = self._commit_proof_polynomials(ck);
         let cs_proof = self._open(empty_transcript, ck);
         let evals = self._evaluate();
-        FflonkyPlonkProof { cs_proof, evals, commitments }
+        FflonkyPlonkProof {
+            cs_proof,
+            evals,
+            commitments,
+        }
     }
 
-    fn verify(&self, vk: &CS::VK, preprocessed_commitments: Vec<CS::C>, proof: FflonkyPlonkProof<F, CS>) -> bool {
+    fn verify(
+        &self,
+        vk: &CS::VK,
+        preprocessed_commitments: Vec<CS::C>,
+        proof: FflonkyPlonkProof<F, CS>,
+    ) -> bool {
         let empty_transcript = &mut merlin::Transcript::new(b"plonk-fflonk-shplonk-kzg");
 
-        let (ts, xss): (Vec<_>, Vec<_>) =
-            self.combinations.iter()
-                .map(|c| (c.t(), c.roots_of_xs.clone()))
-                .unzip();
+        let (ts, xss): (Vec<_>, Vec<_>) = self
+            .combinations
+            .iter()
+            .map(|c| (c.t(), c.roots_of_xs.clone()))
+            .unzip();
         let commitments = [preprocessed_commitments, proof.commitments].concat();
-        FflonkyKzg::<F, CS>::verify(vk, &commitments, &ts, proof.cs_proof, &xss, &proof.evals, empty_transcript)
+        FflonkyKzg::<F, CS>::verify(
+            vk,
+            &commitments,
+            &ts,
+            proof.cs_proof,
+            &xss,
+            &proof.evals,
+            empty_transcript,
+        )
     }
 }

@@ -11,24 +11,23 @@ pub use id::IdentityCommitment;
 
 use crate::Poly;
 
-pub mod kzg;
 mod id;
+pub mod kzg;
 
 pub trait Commitment<F: PrimeField>:
-Eq
-+ Sized
-+ Clone
-+ Debug
-+ Add<Self, Output=Self>
-+ Sub<Self, Output=Self>
-+ Sum<Self>
-+ CanonicalSerialize
-+ CanonicalDeserialize
+    Eq
+    + Sized
+    + Clone
+    + Debug
+    + Add<Self, Output = Self>
+    + Sub<Self, Output = Self>
+    + Sum<Self>
+    + CanonicalSerialize
+    + CanonicalDeserialize
 {
     fn mul(&self, by: F) -> Self;
     fn combine(coeffs: &[F], commitments: &[Self]) -> Self;
 }
-
 
 /// Can be used to commit and open commitments to DensePolynomial<F> of degree up to max_degree.
 pub trait CommitterKey: Clone + Debug + CanonicalSerialize + CanonicalDeserialize {
@@ -41,7 +40,6 @@ pub trait CommitterKey: Clone + Debug + CanonicalSerialize + CanonicalDeserializ
     }
 }
 
-
 /// Can be used to verify openings to commitments.
 pub trait VerifierKey: Clone + Debug {
     /// Maximal number of openings that can be verified.
@@ -50,19 +48,19 @@ pub trait VerifierKey: Clone + Debug {
     }
 }
 
-
 /// Generates a `VerifierKey`, serializable
-pub trait RawVerifierKey: Clone + Debug + Eq + PartialEq + CanonicalSerialize + CanonicalDeserialize {
+pub trait RawVerifierKey:
+    Clone + Debug + Eq + PartialEq + CanonicalSerialize + CanonicalDeserialize
+{
     type VK: VerifierKey;
 
     fn prepare(&self) -> Self::VK;
 }
 
-
 pub trait PcsParams {
     type CK: CommitterKey;
     type VK: VerifierKey;
-    type RVK: RawVerifierKey<VK=Self::VK>;
+    type RVK: RawVerifierKey<VK = Self::VK>;
 
     fn ck(&self) -> Self::CK;
     fn vk(&self) -> Self::VK;
@@ -72,7 +70,6 @@ pub trait PcsParams {
         unimplemented!();
     }
 }
-
 
 /// Polynomial commitment scheme.
 pub trait PCS<F: PrimeField> {
@@ -86,7 +83,7 @@ pub trait PCS<F: PrimeField> {
     // see https://eprint.iacr.org/archive/2020/1536/1629188090.pdf, section 4.2
     type VK: VerifierKey + Into<Self::CK>;
 
-    type Params: PcsParams<CK=Self::CK, VK=Self::VK>;
+    type Params: PcsParams<CK = Self::CK, VK = Self::VK>;
 
     fn setup<R: Rng>(max_degree: usize, rng: &mut R) -> Self::Params;
 
@@ -102,13 +99,21 @@ pub trait PCS<F: PrimeField> {
     fn verify(vk: &Self::VK, c: Self::C, x: F, z: F, proof: Self::Proof) -> Result<(), ()>;
 
     // TODO: is the default implementation useful?
-    fn batch_verify<R: Rng>(vk: &Self::VK, c: Vec<Self::C>, x: Vec<F>, y: Vec<F>, proof: Vec<Self::Proof>, _rng: &mut R) -> Result<(), ()> {
+    fn batch_verify<R: Rng>(
+        vk: &Self::VK,
+        c: Vec<Self::C>,
+        x: Vec<F>,
+        y: Vec<F>,
+        proof: Vec<Self::Proof>,
+        _rng: &mut R,
+    ) -> Result<(), ()> {
         assert_eq!(c.len(), x.len());
         assert_eq!(c.len(), y.len());
-        c.into_iter().zip(x.into_iter()).zip(y.into_iter()).zip(proof.into_iter())
-            .all(|(((c, x), y), proof)| {
-                Self::verify(vk, c, x, y, proof).is_ok()
-            })
+        c.into_iter()
+            .zip(x.into_iter())
+            .zip(y.into_iter())
+            .zip(proof.into_iter())
+            .all(|(((c, x), y), proof)| Self::verify(vk, c, x, y, proof).is_ok())
             .then(|| ())
             .ok_or(())
     }

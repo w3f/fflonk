@@ -1,12 +1,12 @@
-use ark_ec::AffineRepr;
 use ark_ec::pairing::Pairing;
+use ark_ec::AffineRepr;
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use ark_serialize::*;
 use ark_std::{vec, vec::Vec};
 
-use crate::pcs::{CommitterKey, PcsParams, RawVerifierKey, VerifierKey};
 use crate::pcs::kzg::lagrange::LagrangianCK;
 use crate::pcs::kzg::urs::URS;
+use crate::pcs::{CommitterKey, PcsParams, RawVerifierKey, VerifierKey};
 
 impl<E: Pairing> PcsParams for URS<E> {
     type CK = KzgCommitterKey<E::G1Affine>;
@@ -15,20 +15,31 @@ impl<E: Pairing> PcsParams for URS<E> {
 
     fn ck(&self) -> Self::CK {
         let monomial = MonomialCK {
-            powers_in_g1: self.powers_in_g1.clone()
+            powers_in_g1: self.powers_in_g1.clone(),
         };
-        KzgCommitterKey { monomial, lagrangian: None }
+        KzgCommitterKey {
+            monomial,
+            lagrangian: None,
+        }
     }
 
     fn ck_with_lagrangian(&self, domain_size: usize) -> Self::CK {
         let domain = GeneralEvaluationDomain::new(domain_size).unwrap();
-        assert_eq!(domain.size(), domain_size, "domains of size {} are not supported", domain_size);
+        assert_eq!(
+            domain.size(),
+            domain_size,
+            "domains of size {} are not supported",
+            domain_size
+        );
         assert!(domain_size <= self.powers_in_g1.len());
         let monomial = MonomialCK {
-            powers_in_g1: self.powers_in_g1[0..domain_size].to_vec()
+            powers_in_g1: self.powers_in_g1[0..domain_size].to_vec(),
         };
         let lagrangian = Some(monomial.to_lagrangian(domain));
-        KzgCommitterKey { monomial, lagrangian }
+        KzgCommitterKey {
+            monomial,
+            lagrangian,
+        }
     }
 
     fn vk(&self) -> Self::VK {
@@ -38,7 +49,11 @@ impl<E: Pairing> PcsParams for URS<E> {
     /// Non-prepared verifier key. Can be used for serialization.
     fn raw_vk(&self) -> Self::RVK {
         assert!(self.powers_in_g1.len() > 0, "no G1 generator");
-        assert!(self.powers_in_g2.len() > 1, "{} powers in G2", self.powers_in_g2.len());
+        assert!(
+            self.powers_in_g2.len() > 1,
+            "{} powers in G2",
+            self.powers_in_g2.len()
+        );
 
         RawKzgVerifierKey {
             g1: self.powers_in_g1[0],
@@ -53,7 +68,6 @@ pub struct KzgCommitterKey<G: AffineRepr> {
     pub monomial: MonomialCK<G>,
     pub lagrangian: Option<LagrangianCK<G>>,
 }
-
 
 /// Used to commit to and to open univariate polynomials of degree up to self.max_degree().
 #[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
@@ -74,7 +88,6 @@ impl<G: AffineRepr> CommitterKey for KzgCommitterKey<G> {
     }
 }
 
-
 /// Verifier key with G2 elements not "prepared". Exists only to be serializable.
 /// KzgVerifierKey is used for verification.
 #[derive(Clone, Debug, Eq, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
@@ -85,7 +98,6 @@ pub struct RawKzgVerifierKey<E: Pairing> {
     // generator of G2
     pub tau_in_g2: E::G2Affine, // tau.g2
 }
-
 
 impl<E: Pairing> RawVerifierKey for RawKzgVerifierKey<E> {
     type VK = KzgVerifierKey<E>;
@@ -101,7 +113,6 @@ impl<E: Pairing> RawVerifierKey for RawKzgVerifierKey<E> {
         }
     }
 }
-
 
 /// "Prepared" verifier key capable of verifying opening in a single point, given the commitment is in G1.
 /// Use RawKzgVerifierKey for serialization.
@@ -121,8 +132,12 @@ impl<E: Pairing> VerifierKey for KzgVerifierKey<E> {}
 
 impl<E: Pairing> From<KzgVerifierKey<E>> for KzgCommitterKey<E::G1Affine> {
     fn from(vk: KzgVerifierKey<E>) -> Self {
-        let monomial = MonomialCK { powers_in_g1: vec![vk.g1] };
-        Self { monomial, lagrangian: None }
+        let monomial = MonomialCK {
+            powers_in_g1: vec![vk.g1],
+        };
+        Self {
+            monomial,
+            lagrangian: None,
+        }
     }
 }
-

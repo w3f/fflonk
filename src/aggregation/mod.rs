@@ -1,3 +1,3 @@
-pub mod single;
-pub mod multiple;
 pub mod merlin;
+pub mod multiple;
+pub mod single;
