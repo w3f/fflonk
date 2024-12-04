@@ -23,7 +23,7 @@ impl<F: PrimeField, C: Commitment<F>> Claim<F, C> {
         CS: PCS<F, C = C>,
     {
         Claim {
-            c: CS::commit(ck, poly),
+            c: CS::commit(ck, poly).unwrap(),
             x: at,
             y: poly.evaluate(&at),
         }
@@ -126,7 +126,7 @@ mod tests {
             .collect::<Vec<_>>();
         let agg_claim = aggregate_claims::<F, CS>(&claims_at_same_x, &rs);
 
-        assert_eq!(CS::commit(&ck, &agg_poly), agg_claim.c);
+        assert_eq!(CS::commit(&ck, &agg_poly).unwrap(), agg_claim.c);
         assert_eq!(same_x, agg_claim.x);
         assert_eq!(agg_poly.evaluate(&same_x), agg_claim.y);
     }

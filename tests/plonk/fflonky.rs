@@ -117,7 +117,7 @@ impl<F: PrimeField, CS: PCS<F>> PlonkWithFflonkTest<F, CS> {
             "committing to the combined polynomial: degree = {}",
             poly.degree()
         ));
-        let commitment = CS::commit(ck, &poly);
+        let commitment = CS::commit(ck, &poly).unwrap();
         end_timer!(t_commit_combined);
 
         end_timer!(t_commit);

@@ -65,7 +65,6 @@ impl<E: Pairing> KZG<E> {
         rs: &[E::ScalarField],
         vk: &KzgVerifierKey<E>,
     ) -> AccumulatedOpening<E> {
-        assert_eq!(openings.len(), rs.len());
         let openings = Self::parse(openings);
         let ((accs, proofs), ys): ((Vec<E::G1>, Vec<E::G1Affine>), Vec<E::ScalarField>) =
             openings.into_iter().unzip();
@@ -117,8 +116,7 @@ impl<E: Pairing> KZG<E> {
     fn _commit(coeffs: &[E::ScalarField], bases: &[E::G1Affine]) -> KzgCommitment<E> {
         // `msm` allows to call into implementation of `VariableBaseMSM` for `Projective.
         // This allows to call into custom implementations of `msm` (`msm_unchecked` not).
-        let len = usize::min(coeffs.len(), bases.len());
-        let proj = <E::G1 as VariableBaseMSM>::msm(&bases[..len], &coeffs[..len]).unwrap();
+        let proj = <E::G1 as VariableBaseMSM>::msm(&bases[..coeffs.len()], &coeffs).unwrap();
         KzgCommitment(proj.into_affine())
     }
 }
@@ -135,35 +133,28 @@ impl<E: Pairing> PCS<E::ScalarField> for KZG<E> {
         URS::<E>::generate(max_degree + 1, 2, rng)
     }
 
-    fn commit(ck: &Self::CK, p: &Poly<E::ScalarField>) -> Self::C {
+    fn commit(ck: &Self::CK, p: &Poly<E::ScalarField>) -> Result<Self::C, ()> {
         let ck = &ck.monomial;
-        assert!(
-            p.degree() <= ck.max_degree(),
-            "Can't commit to degree {} polynomial using {} bases",
-            p.degree(),
-            ck.max_evals()
-        );
-        Self::_commit(&p.coeffs, &ck.powers_in_g1)
+        if p.degree() > ck.max_degree() {
+            return Err(());
+        }
+        Ok(Self::_commit(&p.coeffs, &ck.powers_in_g1))
     }
 
-    fn commit_evals(ck: &Self::CK, evals: &Evaluations<E::ScalarField>) -> Self::C {
+    fn commit_evals(ck: &Self::CK, evals: &Evaluations<E::ScalarField>) -> Result<Self::C, ()> {
         let ck = ck
             .lagrangian
             .as_ref()
             .expect("lagrangian key hadn't been generated");
-        assert_eq!(evals.domain(), ck.domain);
-        assert!(
-            evals.evals.len() <= ck.max_evals(),
-            "Can't commit to {} values using {} bases",
-            evals.evals.len(),
-            ck.max_evals()
-        );
-        Self::_commit(&evals.evals, &ck.lis_in_g)
+        if evals.evals.len() > ck.max_evals() || evals.domain() != ck.domain {
+            return Err(());
+        }
+        Ok(Self::_commit(&evals.evals, &ck.lis_in_g))
     }
 
-    fn open(ck: &Self::CK, p: &Poly<E::ScalarField>, x: E::ScalarField) -> Self::Proof {
+    fn open(ck: &Self::CK, p: &Poly<E::ScalarField>, x: E::ScalarField) -> Result<Self::Proof, ()> {
         let q = Self::compute_quotient(p, x);
-        Self::commit(ck, &q).0
+        Self::commit(ck, &q).map(|c| c.0)
     }
 
     fn verify(
@@ -172,14 +163,14 @@ impl<E: Pairing> PCS<E::ScalarField> for KZG<E> {
         x: E::ScalarField,
         y: E::ScalarField,
         proof: Self::Proof,
-    ) -> bool {
+    ) -> Result<(), ()> {
         let opening = KzgOpening {
             c: c.0,
             x,
             y,
             proof,
         };
-        Self::verify_single(opening, vk)
+        Self::verify_single(opening, vk).then(|| ()).ok_or(())
     }
 
     fn batch_verify<R: Rng>(
@@ -189,9 +180,10 @@ impl<E: Pairing> PCS<E::ScalarField> for KZG<E> {
         y: Vec<E::ScalarField>,
         proof: Vec<Self::Proof>,
         rng: &mut R,
-    ) -> bool {
-        assert_eq!(c.len(), x.len());
-        assert_eq!(c.len(), y.len());
+    ) -> Result<(), ()> {
+        if c.len() != x.len() || c.len() != y.len() {
+            return Err(());
+        }
         let openings = c
             .into_iter()
             .zip(x.into_iter())
@@ -204,7 +196,7 @@ impl<E: Pairing> PCS<E::ScalarField> for KZG<E> {
                 proof,
             })
             .collect();
-        Self::verify_batch(openings, vk, rng)
+        Self::verify_batch(openings, vk, rng).then(|| ()).ok_or(())
     }
 }
 
@@ -247,15 +239,15 @@ mod tests {
             "Committing to a dense degree-{} polynomial",
             ck.max_degree()
         ));
-        let c = KZG::<E>::commit(&ck, &p);
+        let c = KZG::<E>::commit(&ck, &p).unwrap();
         end_timer!(t_commit);
 
         let t_prove = start_timer!(|| "Generating an opening proof for a single point");
-        let proof = KZG::<E>::open(&ck, &p, x);
+        let proof = KZG::<E>::open(&ck, &p, x).unwrap();
         end_timer!(t_prove);
 
         let t_verify = start_timer!(|| "Verification of a single-point opening");
-        assert!(KZG::<E>::verify(&vk, c, x, z, proof));
+        assert!(KZG::<E>::verify(&vk, c, x, z, proof).is_ok());
         end_timer!(t_verify);
     }
 
@@ -273,8 +265,8 @@ mod tests {
                 let f = Poly::<E::ScalarField>::rand(d, rng);
                 let x = xs[i];
                 let y = f.evaluate(&x);
-                let c = KZG::<E>::commit(ck, &f).0;
-                let proof = KZG::<E>::open(ck, &f, x);
+                let c = KZG::<E>::commit(ck, &f).unwrap().0;
+                let proof = KZG::<E>::open(ck, &f, x).unwrap();
                 KzgOpening { c, x, y, proof }
             })
             .collect()

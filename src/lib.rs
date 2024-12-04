@@ -208,7 +208,7 @@ mod tests {
         let (fs, roots, vss) = generate_test_data(rng, d, t, m);
 
         let g = Fflonk::combine(t, &fs);
-        let gc = CS::commit(&params.ck(), &g);
+        let gc = CS::commit(&params.ck(), &g).unwrap();
 
         let proof = FflonkyKzg::<F, CS>::open_single(&params.ck(), &fs, t, &roots, transcript);
         assert!(FflonkyKzg::<F, CS>::verify_single(
@@ -245,7 +245,7 @@ mod tests {
         let gcs: Vec<_> = fss
             .iter()
             .zip(ts)
-            .map(|(fs, t)| CS::commit(&params.ck(), &Fflonk::combine(t, &fs)))
+            .map(|(fs, t)| CS::commit(&params.ck(), &Fflonk::combine(t, &fs)).unwrap())
             .collect();
 
         let proof = FflonkyKzg::<F, CS>::open(&params.ck(), &fss, &ts, &rootss, transcript);
