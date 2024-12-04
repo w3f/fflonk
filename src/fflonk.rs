@@ -17,8 +17,8 @@ pub struct Fflonk<F: FftField, P: DenseUVPolynomial<F>> {
 }
 
 impl<F: FftField, P: DenseUVPolynomial<F>> Fflonk<F, P>
-    where for<'a, 'b> &'a P: Div<&'b P, Output=P>
-
+where
+    for<'a, 'b> &'a P: Div<&'b P, Output = P>,
 {
     // Given `t` degree `<d` polynomials `fi`, returns a single degree `<dt` polynomial
     // `g(X) = sum fi(X^t)X^i`, `i=0,...,t-1`.
@@ -56,7 +56,7 @@ impl<F: FftField, P: DenseUVPolynomial<F>> Fflonk<F, P>
     fn z_of_roots(t: usize, root_t_of_x: F) -> P {
         let x = root_t_of_x.pow([t as u64]);
         let mut z = vec![F::zero(); t + 1]; // deg(Z) = t
-        // coeffs(Z) = [-x, ..., 1]
+                                            // coeffs(Z) = [-x, ..., 1]
         z[0] = -x;
         z[t] = F::one();
         P::from_coefficients_vec(z)
@@ -78,11 +78,16 @@ impl<F: FftField, P: DenseUVPolynomial<F>> Fflonk<F, P>
     pub fn opening_as_points(t: usize, root_of_x: F, evals_at_x: &[F]) -> (Vec<F>, Vec<F>) {
         assert_eq!(evals_at_x.len(), t); //TODO: may be 0-padded
         let roots = Self::roots(t, root_of_x);
-        let evals_at_roots = roots.iter().map(|&root| {
-            evals_at_x.iter()
-                .zip(utils::powers(root))
-                .map(|(&eval, next_root)| eval * next_root).sum()
-        }).collect();
+        let evals_at_roots = roots
+            .iter()
+            .map(|&root| {
+                evals_at_x
+                    .iter()
+                    .zip(utils::powers(root))
+                    .map(|(&eval, next_root)| eval * next_root)
+                    .sum()
+            })
+            .collect();
         (roots, evals_at_roots)
     }
 
@@ -93,12 +98,15 @@ impl<F: FftField, P: DenseUVPolynomial<F>> Fflonk<F, P>
     pub fn multiopening(t: usize, roots_of_xs: &[F], evals_at_xs: &[Vec<F>]) -> (Vec<F>, Vec<F>) {
         assert_eq!(roots_of_xs.len(), evals_at_xs.len());
         assert!(evals_at_xs.iter().all(|evals_at_x| evals_at_x.len() == t));
-        let polys = evals_at_xs.iter()
+        let polys = evals_at_xs
+            .iter()
             .map(|evals_at_x| P::from_coefficients_slice(evals_at_x));
-        let roots = roots_of_xs.iter()
+        let roots = roots_of_xs
+            .iter()
             .map(|&root_of_x| Self::roots(t, root_of_x));
         let xs: Vec<_> = roots.clone().flatten().collect();
-        let vs: Vec<_> = polys.zip(roots)
+        let vs: Vec<_> = polys
+            .zip(roots)
             .flat_map(|(poly, roots)| Self::multievaluate(&poly, &roots))
             .collect();
         (xs, vs)
@@ -114,8 +122,8 @@ impl<F: FftField, P: DenseUVPolynomial<F>> Fflonk<F, P>
 #[cfg(test)]
 mod tests {
     use ark_ff::Field;
-    use ark_poly::Polynomial;
     use ark_poly::univariate::{DenseOrSparsePolynomial, DensePolynomial};
+    use ark_poly::Polynomial;
     use ark_std::{test_rng, UniformRand, Zero};
 
     use super::*;
@@ -134,10 +142,9 @@ mod tests {
         let root_t_of_x = F::rand(rng); // a t-th root of the opening point
         let x = root_t_of_x.pow([t as u64]); // the opening point
 
-        let fs: Vec<P> = (0..t)
-            .map(|_| P::rand(d, rng))
-            .collect();
-        let fs_at_x: Vec<F> = fs.iter() //
+        let fs: Vec<P> = (0..t).map(|_| P::rand(d, rng)).collect();
+        let fs_at_x: Vec<F> = fs
+            .iter() //
             .map(|fi| fi.evaluate(&x))
             .collect();
 
@@ -153,10 +160,8 @@ mod tests {
         // r -- interpolates vs in xs
         assert!(xs.iter().zip(vs.iter()).all(|(x, &v)| r.evaluate(x) == v));
         // g mod z = r
-        let (_, g_mod_z) = DenseOrSparsePolynomial::divide_with_q_and_r(
-            &(&g.into()),
-            &(&z.into()),
-        ).unwrap();
+        let (_, g_mod_z) =
+            DenseOrSparsePolynomial::divide_with_q_and_r(&(&g.into()), &(&z.into())).unwrap();
         assert_eq!(r, g_mod_z);
     }
 
@@ -171,14 +176,14 @@ mod tests {
         let roots_of_xs: Vec<F> = (0..m) // t-th roots of opening points
             .map(|_| F::rand(rng))
             .collect();
-        let xs: Vec<F> = roots_of_xs.iter() // opening points
+        let xs: Vec<F> = roots_of_xs
+            .iter() // opening points
             .map(|root_t_of_x| root_t_of_x.pow([t as u64]))
             .collect();
 
-        let fs: Vec<P> = (0..t)
-            .map(|_| P::rand(d, rng))
-            .collect();
-        let fs_at_xs: Vec<Vec<F>> = xs.iter()
+        let fs: Vec<P> = (0..t).map(|_| P::rand(d, rng)).collect();
+        let fs_at_xs: Vec<Vec<F>> = xs
+            .iter()
             .map(|x| fs.iter().map(|fi| fi.evaluate(&x)).collect())
             .collect();
 
@@ -198,10 +203,9 @@ mod tests {
         let root_t_of_x = F::rand(rng); // a t-th root of the opening point
         let x = root_t_of_x.pow([t as u64]); // the opening point
 
-        let fs: Vec<P> = (0..t)
-            .map(|_| P::rand(d, rng))
-            .collect();
-        let fs_at_x: Vec<F> = fs.iter() //
+        let fs: Vec<P> = (0..t).map(|_| P::rand(d, rng)).collect();
+        let fs_at_x: Vec<F> = fs
+            .iter() //
             .map(|fi| fi.evaluate(&x))
             .collect();
 
