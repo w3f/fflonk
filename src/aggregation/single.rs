@@ -4,8 +4,8 @@ use ark_poly::Polynomial;
 use ark_std::vec::Vec;
 
 use crate::pcs::{Commitment, PCS};
-use crate::Poly;
 use crate::utils::ec::small_multiexp_affine;
+use crate::Poly;
 
 /// A tuple (c, x, y) of the form (G, F, F). Represents a claim that {f(x) = y, for a polynomial f such that commit(f) = c}.
 /// In other words, it is am instance in some language of "correct polynomial evaluations".
@@ -18,7 +18,10 @@ pub struct Claim<F: PrimeField, C: Commitment<F>> {
 }
 
 impl<F: PrimeField, C: Commitment<F>> Claim<F, C> {
-    pub fn new<CS>(ck: &CS::CK, poly: &Poly<F>, at: F) -> Claim<F, C> where CS: PCS<F, C=C> {
+    pub fn new<CS>(ck: &CS::CK, poly: &Poly<F>, at: F) -> Claim<F, C>
+    where
+        CS: PCS<F, C = C>,
+    {
         Claim {
             c: CS::commit(ck, poly).unwrap(),
             x: at,
@@ -26,7 +29,6 @@ impl<F: PrimeField, C: Commitment<F>> Claim<F, C> {
         }
     }
 }
-
 
 /// Aggregates claims for different polynomials evaluated at the same point.
 ///
@@ -36,19 +38,27 @@ impl<F: PrimeField, C: Commitment<F>> Claim<F, C> {
 ///
 /// If CS is knowledge-sound than an aggregate opening is a proof of knowledge for
 /// `{[(C_i, x, y_i)]; [f_i]): fi(x) = yi and CS::commit(fi) = ci}`.
-pub fn aggregate_claims<F: PrimeField, CS: PCS<F>>(claims: &[Claim<F, CS::C>], rs: &[F]) -> Claim<F, CS::C> {
+pub fn aggregate_claims<F: PrimeField, CS: PCS<F>>(
+    claims: &[Claim<F, CS::C>],
+    rs: &[F],
+) -> Claim<F, CS::C> {
     assert_eq!(claims.len(), rs.len());
 
     let mut iter_over_xs = claims.iter().map(|cl| cl.x);
     let same_x = iter_over_xs.next().expect("claims is empty");
-    assert!(iter_over_xs.all(|x| x == same_x), "multiple evaluation points");
+    assert!(
+        iter_over_xs.all(|x| x == same_x),
+        "multiple evaluation points"
+    );
 
     // TODO: Detect duplicate claims?
     // Consider (Cf, x, y1) and (Cf, x, y2).
     // If y1 = y2 = f(x) both claims are valid
     // If y1 != y2, at least one of the 2 claims is invalid
 
-    let (rcs, rys): (Vec<CS::C>, Vec<F>) = claims.iter().zip(rs.iter())
+    let (rcs, rys): (Vec<CS::C>, Vec<F>) = claims
+        .iter()
+        .zip(rs.iter())
         .map(|(cl, &r)| (cl.c.mul(r), r * cl.y))
         .unzip();
 
@@ -60,9 +70,9 @@ pub fn aggregate_claims<F: PrimeField, CS: PCS<F>>(claims: &[Claim<F, CS::C>], r
 }
 
 pub fn aggregate_claims_multiexp<F, C>(cs: Vec<C>, ys: Vec<F>, rs: &[F]) -> (C, F)
-    where
-        F: PrimeField,
-        C: AffineRepr<ScalarField=F>
+where
+    F: PrimeField,
+    C: AffineRepr<ScalarField = F>,
 {
     assert_eq!(cs.len(), rs.len());
     assert_eq!(ys.len(), rs.len());
@@ -76,7 +86,9 @@ pub fn aggregate_claims_multiexp<F, C>(cs: Vec<C>, ys: Vec<F>, rs: &[F]) -> (C, 
 // for opening in a single point, the aggregate polynomial doesn't depend on the point.
 pub fn aggregate_polys<F: PrimeField>(polys: &[Poly<F>], rs: &[F]) -> Poly<F> {
     assert_eq!(polys.len(), rs.len());
-    polys.iter().zip(rs.iter())
+    polys
+        .iter()
+        .zip(rs.iter())
         .map(|(p, &r)| p * r)
         .fold(Poly::zero(), |acc, p| acc + p)
 }
@@ -108,11 +120,11 @@ mod tests {
         let agg_poly = aggregate_polys(&polys, &rs);
 
         let same_x = F::rand(rng);
-        let claims_at_same_x = polys.iter()
+        let claims_at_same_x = polys
+            .iter()
             .map(|p| Claim::new::<CS>(&ck, p, same_x))
             .collect::<Vec<_>>();
         let agg_claim = aggregate_claims::<F, CS>(&claims_at_same_x, &rs);
-
 
         assert_eq!(CS::commit(&ck, &agg_poly).unwrap(), agg_claim.c);
         assert_eq!(same_x, agg_claim.x);

@@ -1,16 +1,15 @@
 use ark_ff::{FftField, Field, PrimeField, Zero};
-use ark_poly::{DenseUVPolynomial, Polynomial};
 use ark_poly::polynomial::univariate::DensePolynomial;
+use ark_poly::{DenseUVPolynomial, Polynomial};
 use ark_std::{vec, vec::Vec};
 
-use crate::Poly;
 use crate::utils::powers;
+use crate::Poly;
 
 /// Field element represented as a constant polynomial.
 pub(crate) fn constant<F: PrimeField>(c: F) -> Poly<F> {
     Poly::from_coefficients_vec(vec![c])
 }
-
 
 /// The vanishing polynomial of a point x.
 /// z(X) = X - x
@@ -18,21 +17,16 @@ pub(crate) fn z_of_point<F: Field>(x: &F) -> Poly<F> {
     Poly::from_coefficients_vec(vec![x.neg(), F::one()])
 }
 
-
 /// The vanishing polynomial of a set.
 /// z(X) = (X - x1) * .. * (X - xn)
-pub(crate) fn z_of_set<'a, F: FftField>(xs: impl IntoIterator<Item=&'a F>) -> DensePolynomial<F> {
+pub(crate) fn z_of_set<'a, F: FftField>(xs: impl IntoIterator<Item = &'a F>) -> DensePolynomial<F> {
     xs.into_iter()
         .map(|x| z_of_point(x))
         .reduce(|a, b| &a * &b)
         .unwrap()
 }
 
-
-pub fn sum_with_coeffs<F: Field, P: Polynomial<F>>(
-    coeffs: Vec<F>,
-    polys: &[P],
-) -> P {
+pub fn sum_with_coeffs<F: Field, P: Polynomial<F>>(coeffs: Vec<F>, polys: &[P]) -> P {
     assert_eq!(coeffs.len(), polys.len());
     let mut res = P::zero();
     for (c, p) in coeffs.into_iter().zip(polys.iter()) {
@@ -41,15 +35,10 @@ pub fn sum_with_coeffs<F: Field, P: Polynomial<F>>(
     res
 }
 
-
-pub fn sum_with_powers<F: Field, P: Polynomial<F>>(
-    r: F,
-    polys: &[P],
-) -> P {
+pub fn sum_with_powers<F: Field, P: Polynomial<F>>(r: F, polys: &[P]) -> P {
     let powers = powers(r).take(polys.len()).collect::<Vec<_>>();
     sum_with_coeffs(powers, polys)
 }
-
 
 pub fn interpolate<F: PrimeField>(xs: &[F], ys: &[F]) -> Poly<F> {
     let x1 = xs[0];
@@ -83,7 +72,6 @@ pub fn interpolate<F: PrimeField>(xs: &[F], ys: &[F]) -> Poly<F> {
     res
 }
 
-
 /// Given a polynomial `r` in evaluation form {(xi, yi)},
 /// i.e. lowest degree `r` such that `r(xi) = yi` for all `i`s,
 /// and a point zeta,
@@ -93,11 +81,14 @@ pub fn interpolate<F: PrimeField>(xs: &[F], ys: &[F]) -> Poly<F> {
 pub(crate) fn interpolate_evaluate<F: PrimeField>(xs: &[F], ys: &[F], zeta: &F) -> (F, F) {
     assert_eq!(xs.len(), ys.len());
 
-    let zeta_minus_xs = ark_std::iter::repeat(zeta).zip(xs.iter())
+    let zeta_minus_xs = ark_std::iter::repeat(zeta)
+        .zip(xs.iter())
         .map(|(&zeta, xi)| zeta - xi)
         .collect::<Vec<_>>();
 
-    let l_at_zeta = zeta_minus_xs.iter().cloned()
+    let l_at_zeta = zeta_minus_xs
+        .iter()
+        .cloned()
         .reduce(|acc, item| item * acc)
         .expect("TODO");
 
@@ -113,13 +104,19 @@ pub(crate) fn interpolate_evaluate<F: PrimeField>(xs: &[F], ys: &[F], zeta: &F) 
         ws.push(wj);
     }
 
-    let mut denominator = ws.into_iter().zip(zeta_minus_xs.iter())
+    let mut denominator = ws
+        .into_iter()
+        .zip(zeta_minus_xs.iter())
         .map(|(a, b)| a * b)
         .collect::<Vec<_>>();
 
     ark_ff::batch_inversion(&mut denominator);
 
-    let sum = denominator.into_iter().zip(ys.iter()).map(|(a, b)| a * b).sum::<F>();
+    let sum = denominator
+        .into_iter()
+        .zip(ys.iter())
+        .map(|(a, b)| a * b)
+        .sum::<F>();
     (sum * l_at_zeta, l_at_zeta)
 }
 
@@ -146,7 +143,10 @@ mod tests {
         let poly = interpolate(&xs, &ys);
 
         assert_eq!(poly.degree(), d);
-        assert!(xs.iter().zip(ys.iter()).all(|(x, &y)| poly.evaluate(x) == y));
+        assert!(xs
+            .iter()
+            .zip(ys.iter())
+            .all(|(x, &y)| poly.evaluate(x) == y));
 
         for _ in 0..10 {
             let zeta = BenchField::rand(rng);
