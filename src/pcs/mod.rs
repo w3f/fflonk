@@ -13,6 +13,7 @@ use crate::Poly;
 
 mod id;
 pub mod kzg;
+mod ipa;
 
 pub trait Commitment<F: PrimeField>:
     Eq
