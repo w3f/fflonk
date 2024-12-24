@@ -1,3 +1,5 @@
+mod ipa_pc;
+
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
 use ark_ff::{batch_inversion, Field, One};
 use ark_std::test_rng;
@@ -51,6 +53,21 @@ fn final_folding_exponents<F: Field>(xs: &[F]) -> Vec<F> {
     }
     res
 }
+
+
+
+
+// Computes (1 + x_m z)(1 + x_{m-1} z^2) ... (1 + x_1 z^{2^{m-1}}).
+fn evaluate_final_poly<F: Field>(xs: &[F], z: &F) -> F {
+    let mut res = F::one();
+    let mut z_i = z.clone();
+    for x in xs.iter().rev() {
+        res *= z_i * x + F::one();
+        z_i = z_i.square(); //TODO: remove extra squaring
+    }
+    res
+}
+
 
 pub struct Proof<C: AffineRepr> {
     ls: Vec<C>,
@@ -130,7 +147,7 @@ pub fn bullet_prove<C: AffineRepr>(log_n: usize, g: &[C], h: &[C], a: &[C::Scala
     }
 }
 
-pub fn verify<C: AffineRepr>(g: &[C], h: &[C], p :C, u: C, proof: Proof<C>) {
+pub fn verify<C: AffineRepr>(g: &[C], h: &[C], p: C, u: C, proof: Proof<C>) {
     let xs = proof.xs;
     let mut xs_inv = xs.clone();
     batch_inversion(xs_inv.as_mut_slice());
