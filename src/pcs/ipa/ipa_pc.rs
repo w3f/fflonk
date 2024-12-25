@@ -1,8 +1,9 @@
 use crate::pcs::ipa::{evaluate_final_poly, final_folding_exponents, fold_points, fold_scalars, scalar_prod};
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
-use ark_ff::{batch_inversion, Field, One};
+use ark_ff::{batch_inversion, Field};
 use ark_std::rand::Rng;
 use ark_std::test_rng;
+use ark_std::vec;
 use ark_std::vec::Vec;
 
 pub struct Proof<C: AffineRepr> {
@@ -14,8 +15,6 @@ pub struct Proof<C: AffineRepr> {
 }
 
 pub fn open<C: AffineRepr>(log_n: usize, g: Vec<C>, h: C, f: Vec<C::ScalarField>, z: Vec<C::ScalarField>) -> Proof<C> {
-    let zz = z[1];
-
     let n = 2usize.pow(log_n as u32);
     assert_eq!(g.len(), n);
     assert_eq!(f.len(), n);
@@ -71,24 +70,37 @@ pub fn open<C: AffineRepr>(log_n: usize, g: Vec<C>, h: C, f: Vec<C::ScalarField>
     }
 }
 
-// f(z) = v
-pub fn check<C: AffineRepr>(g: Vec<C>, h: C, c: C, z: C::ScalarField, v: C::ScalarField, proof: Proof<C>) {
+/// `g_final` -- folded vector of Pedersen bases `G1,...,Gn`
+/// `u` -- the extra base used to commit to the scalar products in Bulletproofs
+/// `cf` -- Pedersen commitment to the polynomial, `Cf = f0.G1 + ...+ fd.Gn`, where `n = d+1`
+/// `f(z) = v`
+pub fn check_assuming_g_final<C: AffineRepr>(g_final: C, u: C, cf: C, z: C::ScalarField, v: C::ScalarField, proof: Proof<C>) {
     let xs = proof.xs;
     let mut xs_inv = xs.clone();
     batch_inversion(xs_inv.as_mut_slice());
 
-    let final_exps = final_folding_exponents(&xs_inv);
+    // the main Bulletproof commitment is `P = Cf + vU`
+    // The folded one is then `P' = P + (1/x_i).Li + x_i.R_i`
+    let bases = [proof.l, proof.r, vec![u]].concat();
+    let exps = [xs_inv.as_slice(), xs.as_slice(), &[v]].concat();
+    let cp_final = cf + C::Group::msm(&bases, &exps).unwrap();
+
+    // now we check that it's consistent with the other values
     let z_final = evaluate_final_poly(&xs_inv, &z);
+    let sp_final = proof.f_final * z_final; // scalar product of size 1
+    let rhs = g_final * proof.f_final + u * sp_final;
+    assert_eq!(cp_final, rhs); //TODO: merge into single msm
+}
 
-    let bases = [proof.l, proof.r].concat();
-    let exps = [xs_inv, xs].concat();
-    let res1 = C::Group::msm(&bases, &exps).unwrap();
-    let res1  = res1 + c + (h * v);
+pub fn check<C: AffineRepr>(g: Vec<C>, u: C, cf: C, z: C::ScalarField, v: C::ScalarField, proof: Proof<C>) {
+    // TODO: duplicate
+    let xs = proof.xs.clone();
+    let mut xs_inv = xs.clone();
+    batch_inversion(xs_inv.as_mut_slice());
 
-    let res2 = proof.g_final * proof.f_final + h * (proof.f_final * z_final);
-    assert_eq!(res1, res2);
-
-    assert_eq!(proof.g_final, C::Group::msm(&g, &final_exps).unwrap().into_affine());
+    let final_exps = final_folding_exponents(&xs_inv);
+    let g_final = C::Group::msm(&g, &final_exps).unwrap().into_affine();
+    check_assuming_g_final(g_final, u, cf, z, v, proof);
 }
 
 #[cfg(test)]
