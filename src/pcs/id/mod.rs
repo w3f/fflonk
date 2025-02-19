@@ -110,15 +110,15 @@ impl<F: PrimeField> PCS<F> for IdentityCommitment {
         ()
     }
 
-    fn commit(_ck: &(), p: &Poly<F>) -> Self::C {
-        WrappedPolynomial(p.clone())
+    fn commit(_ck: &(), p: &Poly<F>) -> Result<Self::C, ()> {
+        Ok(WrappedPolynomial(p.clone()))
     }
 
-    fn open(_ck: &(), _p: &Poly<F>, _x: F) -> Self::Proof {
-        ()
+    fn open(_ck: &(), _p: &Poly<F>, _x: F) -> Result<Self::Proof, ()> {
+        Ok(())
     }
 
-    fn verify(_vk: &(), c: Self::C, x: F, z: F, _proof: Self::Proof) -> bool {
-        c.evaluate(&x) == z
+    fn verify(_vk: &(), c: Self::C, x: F, z: F, _proof: Self::Proof) -> Result<(), ()> {
+        (c.evaluate(&x) == z).then(|| ()).ok_or(())
     }
 }
