@@ -1,3 +1,5 @@
+### Not a single line of code in this repo has been reviewed (let alone audited). Use on your own risc.
+
 This repo aims to build a collection of tools for augmenting polynomial commitment schemes (PCS, from now on). 
 
 ## Shplonk
