@@ -6,9 +6,9 @@ use ark_serialize::*;
 use ark_std::rand::Rng;
 use ark_std::{end_timer, start_timer, test_rng};
 
-use fflonk::pcs::{Commitment, PcsParams, PCS};
-use fflonk::utils::poly;
-use fflonk::Poly;
+use w3f_pcs::pcs::{Commitment, PcsParams, PCS};
+use w3f_pcs::utils::poly;
+use w3f_pcs::Poly;
 
 use crate::{DecoyPlonk, VanillaPlonkAssignments};
 

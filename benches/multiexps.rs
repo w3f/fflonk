@@ -4,7 +4,7 @@ use ark_ff::{PrimeField, UniformRand};
 use ark_std::test_rng;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 
-use fflonk::utils::ec;
+use w3f_pcs::utils::ec;
 
 fn small_multiexp_affine<E: Pairing>(c: &mut Criterion) {
     let rng = &mut test_rng();
