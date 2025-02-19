@@ -8,9 +8,9 @@ use ark_std::rand::Rng;
 use ark_std::test_rng;
 use ark_std::{end_timer, start_timer};
 
-use fflonk::pcs::kzg::KZG;
-use fflonk::pcs::PCS;
-use fflonk::Poly;
+use w3f_pcs::pcs::kzg::KZG;
+use w3f_pcs::pcs::PCS;
+use w3f_pcs::Poly;
 
 use crate::batchy::PlonkBatchKzgTest;
 use crate::fflonky::PlonkWithFflonkTest;
@@ -90,7 +90,7 @@ fn _test_vanilla_plonk_opening<F: PrimeField, CS: PCS<F>, T: DecoyPlonk<F, CS>>(
     let t_test = start_timer!(|| format!(
         "domain_size = {},  curve = {}",
         n,
-        fflonk::utils::curve_name::<Bls12_381>()
+        w3f_pcs::utils::curve_name::<Bls12_381>()
     ));
 
     let t_setup = start_timer!(|| "Setup");

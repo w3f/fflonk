@@ -2,12 +2,12 @@ use std::ops::Mul;
 
 use ark_bw6_761::BW6_761;
 use ark_ec::pairing::Pairing;
-use ark_ec::{AffineRepr, CurveGroup, Group};
+use ark_ec::{AdditiveGroup, AffineRepr, CurveGroup};
 use ark_ff::UniformRand;
 use ark_std::test_rng;
 use criterion::{criterion_group, criterion_main, Criterion};
 
-use fflonk::utils::curve_name;
+use w3f_pcs::utils::curve_name;
 
 fn scalar_mul<E: Pairing>(c: &mut Criterion) {
     let mut group = c.benchmark_group(format!("{}/scalar-mul", curve_name::<E>()));

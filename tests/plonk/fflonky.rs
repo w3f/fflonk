@@ -7,11 +7,11 @@ use ark_std::rand::Rng;
 use ark_std::test_rng;
 use ark_std::{end_timer, start_timer};
 
-use fflonk::fflonk::Fflonk;
-use fflonk::pcs::PcsParams;
-use fflonk::pcs::PCS;
-use fflonk::shplonk::AggregateProof;
-use fflonk::{FflonkyKzg, Poly};
+use w3f_pcs::fflonk::Fflonk;
+use w3f_pcs::pcs::PcsParams;
+use w3f_pcs::pcs::PCS;
+use w3f_pcs::shplonk::AggregateProof;
+use w3f_pcs::{FflonkyKzg, Poly};
 
 use crate::{DecoyPlonk, VanillaPlonkAssignments};
 
