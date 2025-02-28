@@ -3,7 +3,7 @@ use ark_poly::Evaluations;
 use ark_serialize::*;
 use ark_std::fmt::Debug;
 use ark_std::iter::Sum;
-use ark_std::ops::{Add, Sub};
+use ark_std::ops::{Add, Mul, Sub};
 use ark_std::rand::Rng;
 use ark_std::vec::Vec;
 
@@ -20,6 +20,7 @@ pub trait Commitment<F: PrimeField>:
     + Clone
     + Debug
     + Add<Self, Output = Self>
+    + Mul<F, Output=Self>
     + Sub<Self, Output = Self>
     + Sum<Self>
     + CanonicalSerialize
