@@ -20,7 +20,7 @@ pub trait Commitment<F: PrimeField>:
     + Clone
     + Debug
     + Add<Self, Output = Self>
-    + Mul<F, Output=Self>
+    + Mul<F, Output = Self>
     + Sub<Self, Output = Self>
     + Sum<Self>
     + CanonicalSerialize
