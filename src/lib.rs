@@ -18,6 +18,9 @@ pub mod pcs;
 pub mod shplonk;
 pub mod utils;
 
+pub use ark_poly::polynomial::DenseUVPolynomial;
+pub use ark_poly::polynomial::Polynomial;
+
 pub type Poly<F> = DensePolynomial<F>; // currently SparsePolynomial doesn't implement DenseUVPolynomial anyway
 
 pub trait EuclideanPolynomial<F: PrimeField> {
